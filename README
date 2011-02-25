@@ -1,0 +1,21 @@
+## The Multi-Platform Packaging and Publication Tool ##
+
+# Licence #
+This software is released under the BSD licence.
+
+Copyright is held between: 
+ASTRON, Dwingleoo, Nederlands
+Oxford e-Research Centre, Oxford University, Oxford, UK
+and Christopher J. Williams
+All rights reserved.
+
+# Running the Tool #
+In the top level directory you will find the executable mpp.
+Help is available through the help command:
+<code>
+mpp help
+</code>
+
+# Documentation #
+Further documention is available as markdown files in the doc folder.
+Currently this is far from complete, and some of it is out of date.
