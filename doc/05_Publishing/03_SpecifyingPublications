@@ -1,0 +1,19 @@
+## Defining Publication Servers ##
+
+Packages can be made available through one or more servers. Different 
+servers will be needed for the different architectures supported.
+
+Each server needs to be described to mpp in the main configuration file (mpp.conf). 
+
+## The [publisher::server_name] section ##
+
+Each section beginning with the publisher keyword defines a server. 
+
+e.g. This section defines an apt publisher called oxford_apt. 
+(Apt is a system used by debian distributions) 
+
+[publisher::oxford_apt]
+url=http://oxfordpublicationserver/apt
+type=apt
+root=/var/www/apt
+

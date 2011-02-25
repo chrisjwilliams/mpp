@@ -1,0 +1,19 @@
+[build] section
+===============
+
+Setup Options                                                   |   Description
+----------------------------------------------------------------|---------------------------------------------------------
+copy=(local_source_file remote_destination_file) (...)          |  copies files from the project directory on the mpp host
+                                                                |  to the build platform. 
+                                                                |
+This will expand with the mpp variables before the copy         |
+                                                                |
+copyExpand=(local_source_file remote_destination_file) (...)    |  expands mpp variables in the file before copying to
+                                                                |  the platform
+                                                                |
+link=(destination link_name) (...)                              |  create link(s) on the build platform
+
+
+Options                                                         |   Description
+----------------------------------------------------------------|---------------------------------------------------------
+cmd=                                                            | specify the command to execute to start the build process

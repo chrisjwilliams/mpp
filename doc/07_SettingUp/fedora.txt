@@ -1,0 +1,17 @@
+# firewall must accept all packets on the Internet interface (HostOnly interface)
+e.g. insert the following lines into
+/etc/sysconfig/iptables BEFORE any REJECT statements
+
+-A INPUT -i eth0 -j ACCEPT
+-A OUTPUT -o eth0 -j ACCEPT
+
+# sudo
+comment out: #Default requiretty
+
+# .ssh needs these permissions to be set on the keys
+chmod 0700 .ssh
+chmod 0600 .ssh/authorized_keys 
+
+# -- yum
+# change group +w to vmware 
+/etc/yum.repos.d

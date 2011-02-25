@@ -1,0 +1,19 @@
+## [packager] section ##
+
+In general each platform will have a standard package management system for dowloading
+and installing software. This is often in two parts:
+1) the publisher client, which manages downloading of packages and their depndencies
+2) the installation which actually takes these packages and unpacks them onto the system
+
+In some cases there are more than one option for one or both of these roles.
+The function of the [packager] section is to specify these toolchains.
+The "type" keyword specifies the publisher client and the
+"packageType" keyword specifies the packages used.
+
+e.g. on openSuse 11.1 platform the packages used are rpm's. The zypper tool is the publisher
+client.
+
+[packager]
+type=zypper
+packageType=rpm
+

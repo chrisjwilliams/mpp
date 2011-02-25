@@ -1,0 +1,21 @@
+## the [project] section
+
+# Required Variables #
+
+variable name                  | Description
+---------------------------------------------------------------------
+licence|license                | the type of licence for the package
+description                    | brief one line description of the package
+
+# Optional Variables #
+
+variable name                  | Description
+---------------------------------------------------------------------
+type=build|pack                | defaults to build 
+                               | build: creates the package to be published
+                               | pack: for publishing pre-packaged files
+                               |
+conflicts                      | mark package as conflicting with another 
+replaces                       | mark package as replacing another
+name                           | specify an alternative name
+version                        | override the project version

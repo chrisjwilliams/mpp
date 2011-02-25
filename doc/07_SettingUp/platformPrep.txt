@@ -1,0 +1,21 @@
+# A quasi-script of the things to do on unix like systems
+export mppuser="vmware";
+export mppgroup="vmware";
+adduser --ingroup $mppgroup $mppuser
+
+#Debian specific Systems:
+chgrp $mppgroup /etc/apt/sources.list.d
+# sudo visudo
+# add the line at the end of the file (/etc/sudoers)
+echo "%${mppgroup} ALL=NOPASSWD: ALL" >> /etc/sudoers
+
+# on ubuntu platforms turn of the preconfig
+# by commenting out the line in
+# /etc/apt/apt.conf.d/70debconf
+#
+# on Suse make sure this directory has write permissions
+# chgrp ${mppgroup} /etc/zypp/repos.d
+# chmod g+w /etc/zypp/repos.d
+#
+# turn off disk checking on bootup
+sudo tune2fs -c 0 /dev/hda1

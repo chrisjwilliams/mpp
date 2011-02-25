@@ -1,0 +1,132 @@
+## Describing the Computing Environment ##
+
+This section deals with the issues of describing different computing environments 
+to mpp to enable it to do its work. Information is broken down in two main sections:
+
+1) Platform Specific
+   Describes general features of the Operating System, such as the names
+   of packages required to meet dependencies, locations of the main system
+   libraries etc.
+2) Machine Specific
+   Actual installation specific information such as the ip address of a specific
+   machine and how to start it up.
+
+## Machine Specific Data ##
+
+Configuration Directory: PackageManager/Platforms
+
+For each machine available to mpp, a seperate file must be provided. The name
+of the file will be the name that the machine will be referred to by mpp.
+Note that the machine has to be configured for use by MPP, to allow it to log on 
+and act as administrator when required (See chapter TODO )
+
+Example 1 : Machine on the local network
+----------------------------------------
+     This describes a Mac OSX machine on the local network named "my_mac". By providing
+the internet cards mac address and your lan's broadcast address in the network section you 
+allow mpp to try and start the machine through the wake on lan protocol.
+
+[system]
+arch=i386
+platform=macos_x_darwin
+
+[workspace]
+dir=/Users/mpp_user/mpp_work
+
+[network]
+hostname=my_mac
+login=mpp_user
+mac=00:78:9d:77:77:6c
+broadcast=163.1.125.255
+
+[packager]
+type=macport
+
+
+Example 2 : VMWare Server
+-------------------------
+     This describes a ubuntu 8.04 platform that can be started up on demand on
+     the local host using vmware server.
+
+[system]
+bootDelay=80
+arch=i386
+platform=ubuntu_8_04
+
+[vmware]
+id=[standard] Ubuntu_8_04_32-bit/Ubuntu_8_04_32-bit.vmx
+server=https://localhost
+port=8333
+username=myvmwareuser
+passwd=mysecretpassword
+
+[network]
+ip=172.16.89.61
+login=mympploginaccountname
+
+[packager]
+type=apt
+
+Example 3 : ESXi Server using the RCLI toolset
+----------------------------------------------
+     This describes a ubuntu 8.04 platform that can be started up on demand using
+     a remote vmware hypervisor (ESXi) service.
+
+[system]
+bootDelay=80
+arch=i386
+platform=ubuntu_8_04
+
+[vmware]
+id=[datastore1] Ubuntu_8_04_32-bit/Ubuntu_8_04_32-bit.vmx
+serverType=esx
+server=myesxserver.mydomain
+port=902
+username=myvmwareuser
+passwd=mysecretpassword
+
+[network]
+ip=172.16.89.61
+login=mympploginaccountname
+
+[packager]
+type=apt
+
+Example 4 : ESXi Server using ssh
+---------------------------------
+     Where the use of RCLI is not appropriate and the ESXi server has been enabled for ssh
+login. This describes a fedora_11 64bit machine hosted on the ESXi server myESXiBox.
+
+[vmware]
+id=208
+serverType=ESXiSSH
+server=myESXiBox
+
+[system]
+bootDelay=45
+arch=x86_64
+platform=fedora_11
+
+[network]
+hostname=
+ip=192.168.97.51
+login=vmware
+
+[packager]
+type=yum
+packageType=rpm
+
+Note that the myESXiBox has to have its own platform description file :
+
+# The ESXi host server platform description file
+[system]
+arch=i386
+platform=esx
+bootDelay=20
+
+[network]
+hostname=myESXiBox
+login=root
+mac=00:24:60:9c:d6:f4
+broadcast=192.168.99.255
+

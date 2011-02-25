@@ -1,0 +1,31 @@
+#!/usr/bin/perl -w -I Externals
+use File::DirIterator;
+use Cwd;
+use File::Basename;
+
+my @dirs;
+if( @ARGV ) {
+    @dirs=@ARGV;
+}
+else {
+    push @dirs, cwd();
+}
+
+my $fail=0;
+foreach $dir ( @dirs ) {
+    die "unknown directory $dir", if( ! -d $dir );
+    my $it=File::DirIterator->new($dir);
+    while( $d=$it->next() ) {
+        next, if $d!~/test.pl$/;
+        next, if $d=~/TestSuite/;
+        my $dir=dirname($d);
+        chdir $dir or die "unable to chdir $dir : $!";
+        print "running tests in $dir\n";
+        system("./test.pl");
+        if( $? ) {
+            $fail += $? >> 8
+        }
+    }
+}
+print "Summary\n--------\n";
+print "total of $fail tests failed\n";

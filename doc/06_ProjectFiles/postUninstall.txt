@@ -1,0 +1,8 @@
+[postUninstall] section
+-------------------------
+The postUninstall section should contain a series of commands that should be run after
+the a packages contents have been removed from the system.
+
+The postUninstall section can be prefixed by either a hostname, or a platform type
+e.g.
+[postUninstall::ubuntu_8_10]

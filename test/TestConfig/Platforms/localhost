@@ -1,0 +1,16 @@
+[system]
+platform=testPlatform
+arch="testArch"
+
+[network]
+hostname=localhost
+ip=127.0.0.1
+
+packageType[workspace]
+dir=/tmp/mpp_test
+
+[packager]
+installCmd=
+type=test
+packageType=Test
+publisher=simple

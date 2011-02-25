@@ -1,0 +1,685 @@
+#!/usr/bin/perl -w
+#
+#  multi platform build and package manager
+#
+#  Copyright C.Williams, OERC, Astron, 2005-2011
+#  All rights reserved
+#
+#  Generated Using Command Line Framework Template
+#
+use FindBin;
+use lib "$FindBin::RealBin";
+use lib "$FindBin::RealBin/Externals";
+use strict;
+use File::Path;
+use File::Basename;
+use locale;
+use INIConfig;
+
+# -- set defaults
+$::configFile="mpp.conf";
+$::defVersion="dev";
+my $prjbase=$ENV{HOME}."/PackageMaker";
+$::prjloc=$prjbase."/Projects"; # default
+$::platformloc=$prjbase."/Platforms"; # default
+$::configPath="/etc:$ENV{HOME}/.:$prjbase";
+$::configDirPath="/etc/mpp.d:$prjbase/config.d";
+my @allowedcmds=qw(list new build install uninstall test run halt start publish unpublish publisher publications platforms platform);
+
+# ----------------- command parsing --------------------
+# -- parse options
+if( defined  $ARGV[0] )
+{
+while ( $ARGV[0]=~/^-(.*)/ ) {
+    my $arg=$1;
+    shift @ARGV;
+    if ( $arg eq "c" ) {
+        $::prjloc=shift @ARGV;
+    }
+    elsif ( $arg eq "verbose" || $arg eq "v") {
+        $::verbose{(shift)}=1;
+    }
+    elsif ( $arg eq "config" ) {
+        print "Configuration File Path: $::configPath\n";
+        print "Configuration Directories: $::configDirPath\n";
+        print "Configuration Files Found:\n";
+        foreach my $file (&configFiles() ) {
+            print "\t",$file,"\n";
+        }
+        my $config=&config;
+        print "Project Directories:\n";
+        foreach my $dir ( $config->list("projectLocation") ) {
+            print "\t$dir\n";
+        }
+        print "Platform Directories:\n";
+        foreach my $dir ( $config->list("platformLocation") ) {
+            print "\t$dir\n";
+        }
+        exit 0;
+    }
+    elsif ( $arg eq "help" || $arg eq "h" ) {
+        usage();
+        exit 0;
+    }
+    else {
+        print "unknown option -$arg\n";
+        exit 1;
+    }
+}
+
+#  -- create default project directory if it doesn't already exist
+if ( ! -d $prjbase ) { 
+    File::Path::mkpath($prjbase, 0, 0755) or die "Unable to create dir $prjbase $!\n";
+}
+if ( ! -d $::prjloc ) { 
+    File::Path::mkpath($::prjloc, 0, 0755) or die "Unable to create dir $::prjloc $!\n";
+}
+
+# -- parse commands
+my $cmds=cliCommands->new_object($prjbase, config() );
+
+my $found=0;
+foreach my $cmd ( @allowedcmds ) {
+    if ( $ARGV[0] eq $cmd ) {
+        shift @ARGV;
+        no strict 'refs';
+        if ( defined $ARGV[0] && $ARGV[0]=~/help/i ) {
+            $cmd="help_".$cmd;
+        }
+        exit $cmds->$cmd(@ARGV);
+        $found=1;
+        last;
+    }
+}
+
+if ( $found == 0 ) {
+    usage();
+    exit 1;
+}
+} # end if( defined ARGV[0]
+
+sub usage {
+    print "Usage:\n\t";
+    print "mpp [options] cmd [help]\n\n";
+    print "Allowed Commands:\n";
+    foreach my $cmd ( @allowedcmds ) {
+        print "\t$cmd\n";
+    }
+    print "\nOptions:\n";
+    print "\t-c : specify alternative projects resource directory\n";
+    print "\t-config : display config information\n";
+    print "\t-verbose -v class: set verbose mode on the specified class\n";
+    print "\t-help -h : display this info\n";
+    print "\n";
+    print "Additional help is available for each command with the help keyword\n";
+    print "\te.g.\n\t\t mpp list help\n";
+    print "\n";
+}
+
+#
+# Search a path for the specified file names
+# Return a list of all files found
+# usage findFiles("/root/to/path1:/path2:/path3" , @files)
+#
+
+sub findFiles {
+    my $path=shift;
+
+    my @found;
+    foreach my $dir ( split (/:/, $path) ) {
+        foreach my $file ( @_ ) {
+            my $fnm=$dir."/".$file;
+            if ( -f $fnm ) { push @found, $fnm; }
+        }
+    }
+    return @found;
+}
+
+# -- read in configuration files
+sub config {
+    if ( ! defined $::config ) {
+        my @files=&configFiles();
+        $::config=INIConfig->new(@files);
+        # -- add the default local working areas
+        $::config->setList("platformLocation", $::platformloc);
+        $::config->setList("projectLocation", $::prjloc);
+        # -- set verbosity levels
+        foreach my $key ( (keys %::verbose) ) {
+            print "Setting verbose on class $key\n";
+            $::config->setVar("verbose",$key,$::verbose{$key});
+        }
+    }
+    return $::config;
+}
+
+sub configFiles {
+    my @files;
+    # main configuration (always take precedence)
+    # modular configration dirs
+    push @files, File::SearchPath->new($::configDirPath)->allFiles();
+    push @files, findFiles( $::configPath, $::configFile);
+    return @files;
+}
+
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+# ----------------- classes ----------------------------
+#
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+# ---- cliCommands package ------------------------------
+package cliCommands;
+use MppAPI;
+
+# N.B new() used as a command so use new_object to initialise an object
+sub new_object {
+    my $class=shift;
+    my $self={};
+    my $base=shift;
+    my $config=shift;
+    bless $self, $class;
+    $config->setVar("mpp","baseDir", $base);
+    $self->{api}=new MppAPI($FindBin::RealBin, $config);
+    return $self;
+}
+
+# ----------------------------------------------------
+# Specific Commands go after this comment block
+# each command MUST have a related help_ method
+# e.g. for a command list()
+# need to implement sub list and sub help_list
+# ----------------------------------------------------
+
+sub help_halt
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "halt platform_name\n";
+    print "Decription:\n\t";
+    print "Attempt to shut down a running machine\n";
+}
+
+sub halt
+{
+    my $self=shift;
+    my $context=$self->_getContext(@_);
+    my @plats=$self->{api}->getContextualisedPlatforms($context, @_);
+    foreach my $p ( @plats ) {
+        print $p->shutdown();
+    }
+    return;
+}
+
+sub help_start
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "start platform_name\n";
+    print "Decription:\n\t";
+    print "Attempt to shut down a running machine\n";
+}
+
+sub start
+{
+    my $self=shift;
+    my $context=$self->_getContext(@_);
+    my @plats=$self->{api}->getPlatforms(@_);
+    foreach my $p ( @plats ) {
+        print $p->startup();
+    }
+    return;
+}
+
+sub help_list
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "list [project_name]\n";
+    print "Decription:\n\t";
+    print "Display a list of know projects and versions.\n";
+    print "Any project_names supplied will limit the list to that project\n";
+}
+
+sub list
+{
+    my $self=shift;
+    my $pm=$self->{api}->getProjectManager();
+    my @projs=$pm->listProjects(@_);
+    foreach my $p ( @projs ) {
+        print $p->name()." ".$p->version()."\n";
+    }
+    return;
+}
+
+sub help_install
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "install project version platform[,platform,...]\n";
+    print "Decription:\n\t";
+    print "install the specified project on the platform\n";
+}
+
+sub install
+{
+    my $self=shift;
+    my $project = $self->_getProject(@_);
+    shift; shift;
+
+    my @plats=();
+    for(@_ ) {
+        my $plat=$project->platform($_);
+        if( ! defined $plat ) {
+           print "unknown platform $_\n";
+           exit 1;
+        }
+        push @plats, $plat;
+    }
+    foreach my $platform ( @plats ) {
+        $project->install( $platform );
+    }
+}
+
+sub help_run
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "run platform_type cmd\n";
+    print "Decription:\n\t";
+    print "run the specified command on a machine of the\n",
+          "specified type.\n";
+}
+
+sub run
+{
+    my $self=shift;
+    my $platform=shift;
+
+    my $pm=$self->{api}->getPlatformManager();
+
+    my $context=$self->_getContext(@_);
+
+    my $plat=$pm->getPlatform($platform, $context);
+    if (! defined $plat ) 
+    {
+        print "unknown platform '$platform'\n";
+        exit 1;
+    }
+    my @rv=$plat->invoke(@_);
+    foreach my $p ( @rv ) {
+        print $p,"\n";
+    }
+}
+
+sub help_platform
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "platform <platfrom_name>\n";
+    print "Decription:\n\t";
+    print "Display basic info about the specified platform\n";
+}
+
+sub platform
+{
+    my $self=shift;
+    my $platform=shift;
+    my $pm=$self->{api}->getPlatformManager();
+    my $context=$self->_getContext(@_);
+    my $plat=$pm->getPlatform($platform, $context);
+    if (! defined $plat ) 
+    {
+        print "unknown platform '$platform'\n";
+        exit 1;
+    }
+    print "Name     : ",$plat->name(),"\n";
+    if(defined $plat->ip()) {
+        print "ip       : ",$plat->ip(),"\n", 
+    }
+    print "platform : ", $plat->platform(),"\n";
+    print "arch     : ", $plat->arch(),"\n";
+    return;
+}
+
+sub help_platforms
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "platforms\n";
+    print "Decription:\n\t";
+    print "Display a list of know platforms\n";
+}
+
+sub platforms
+{
+    my $self=shift;
+    my $pm=$self->{api}->getPlatformManager();
+    my @pl=$pm->listPlatforms();
+    foreach my $p ( @pl ) {
+        print $p,"\n";
+    }
+    return;
+}
+
+sub help_publisher
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "publisher publisher_name\n";
+    print "Decription:\n\t";
+    print "Print out the url for the specified publisher.\n";
+}
+
+sub publisher
+{
+    my $self=shift;
+
+    my @pubs=@_;
+    my $pf = $self->{api}->getPublisherFactory();
+    if( $#pubs <= 0 ) {
+        @pubs=$pf->publishers();
+    }
+    foreach my $name ( @pubs ) {
+        print $name,":\n\t";
+        my $pub=$pf->getPublisher($name);
+        if( $pub ) {
+            print (join("\n\t", $pub->repositoryRefs()) );
+        }
+        print "\n";
+    }
+}
+
+sub help_publications
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "publications\n";
+    print "Decription:\n\t";
+    print "Print out list of available publications.\n";
+}
+
+sub publications
+{
+    my $self=shift;
+
+    my @pubs=@_;
+    my $pf = $self->{api}->getPublisherFactory();
+    if( $#pubs >= 0 ) {
+         print (join("\n\t", $pf->publications() ));
+    }
+}
+
+sub help_unpublish
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "unpublish release_level package\n";
+    print "Decription:\n\t";
+    print "remove the package from the configured destinations at the specified release level.\n";
+    print "Options:\n\t";
+    print "-p, -platform platform_name : only unpublish package for the specified platform\n";
+}
+
+sub unpublish
+{
+    my $self=shift;
+    my @platforms=();
+    while ( $_[0]=~/^-(.*)/ ) {
+        my $arg=$1;
+        shift @_;
+        if( $arg eq "platform" || $arg eq "p" ) {
+            my $platform=shift @_;
+            die "platform not specified", if( ! defined $platform );
+            die "platform not valid '$platform'", if( $platform=~/^-/ );
+            push @platforms, $platform;
+        }
+        else {
+            print "unknown option : $arg\n";
+            $self->help_unpublish();
+        }
+    }
+    my $release=shift;
+    my $proj = $self->_getProject(@_);
+    if( $#platforms >= 0 ) {
+        $proj->setPlatforms( @platforms );
+    }
+    if( $proj )
+    {
+        $proj->unpublish($release);
+    }
+}
+
+sub help_publish
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "publish release_level package\n";
+    print "Decription:\n\t";
+    print "Publish the available packages to the configured destinations at the specified release level.\n";
+    print "Options:\n\t";
+    print "-p, -platform platform_name : only publish package for the specified platform\n";
+}
+
+sub publish
+{
+    my $self=shift;
+    my @platforms=();
+    while ( $_[0]=~/^-(.*)/ ) {
+        my $arg=$1;
+        shift @_;
+        if( $arg eq "platform" || $arg eq "p" ) {
+            my $platform=shift @_;
+            die "platform not specified", if( ! defined $platform );
+            die "platform not valid '$platform'", if( $platform=~/^-/ );
+            push @platforms, $platform;
+        }
+        else {
+            print "unknown option : $arg\n";
+            $self->help_publish();
+        }
+    }
+    my $release=shift;
+    my $proj = $self->_getProject(@_);
+    if( $#platforms >= 0 ) {
+        $proj->setPlatforms( @platforms );
+    }
+    if( $proj )
+    {
+        $proj->publish($release);
+    }
+}
+
+sub help_build
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "build [-nobuild] project_name\n";
+    print "Decription:\n\t";
+    print "build the specified project on all supported architectures.\n";
+    print "Will return the number of failed platforms\n";
+    print "Options:\n\t";
+    print "-no_build : skip the make step - just packaging\n\t";
+    print "-no_upload : skip the src upload step\n\t";
+    print "-no_deps   : skip dependency checking\n\t";
+    print "-p, -platform platform_name : only build on the specified platform\n";
+}
+
+sub build
+{
+    my $self=shift;
+    # process build options
+    my %opts;
+    my @platforms=();
+    while ( $_[0]=~/^-(.*)/ ) {
+        my $arg=$1;
+        shift @_;
+        if( $arg eq "platform" || $arg eq "p" ) {
+            my $platform=shift @_;
+            die "platform not specified", if( ! defined $platform );
+            die "platform not valid '$platform'", if( $platform=~/^-/ );
+            push @platforms, $platform;
+        }
+        elsif( $arg=~/no_(.+)/ ) {
+            $opts{"$arg"}=1;
+        }
+        else {
+            print "unknown option : $arg\n";
+            $self->help_build();
+        }
+    }
+    my $proj=$self->_getProject(@_);
+    foreach my $opt ( keys %opts ) {
+        $proj->setOptions($opt, $opts{$opt} );
+    }
+    if( $#platforms >= 0 ) {
+        $proj->setPlatforms( @platforms );
+    }
+    if( defined $proj )
+    {
+        my $rv=$proj->build();
+        return $self->_shutdownAndReport($rv, $proj, "build");
+    }
+    return 1;
+}
+
+sub help_test
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "test [options] project_name \n";
+    print "Decription:\n\t";
+    print "Start testing the packaging by trying it out on the", "\n",
+          "virtual machines available\n";
+    print "Options:\n\t";
+    print "-p, -platform platform_name : only test on the specified platform\n";
+}
+
+sub test
+{
+    my $self=shift;
+    my @platforms=();
+    while ( $_[0]=~/^-(.*)/ ) {
+        my $arg=$1;
+        shift @_;
+        if( $arg eq "platform" || $arg eq "p" ) {
+            my $platform=shift @_;
+            die "platform not specified", if( ! defined $platform );
+            die "platform not valid '$platform'", if( $platform=~/^-/ );
+            push @platforms, $platform;
+        }
+        else {
+            print "unknown option : $arg\n";
+            $self->help_test();
+        }
+    }
+    my $proj=$self->_getProject(@_);
+    if( $#platforms >= 0 ) {
+        $proj->setPlatforms( @platforms );
+    }
+    if( defined $proj )
+    {
+        my $rv=$proj->test();
+        return $self->_shutdownAndReport($rv, $proj, "test");
+    }
+    return 1;
+}
+
+sub help_new
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "new project_name version\n";
+    print "Decription:\n\t";
+    print "Create a new project to manage.\n";
+}
+
+sub new
+{
+    my $self=shift;
+    my $name=shift;
+    my $version=shift;
+
+    if ( ! defined $version ) { $version=$::defVersion; }
+    my $pm=$self->{api}->getProjectManager();
+    my $prj=$pm->newProject($name, $version);
+    if ( $prj ne "" ) {
+        print "New project created in ",$prj->location(),"\n";
+        return 0;
+    }
+    return 1;
+}
+
+sub _getProject {
+    my $self=shift;
+    my $pm=$self->{api}->getProjectManager();
+    my @platforms=();
+    while ( $_[0]=~/^-(.*)/ ) {
+        my $arg=$1;
+        shift @_;
+        if( $arg eq "platform" || $arg eq "p" ) {
+            my $platform=shift @_;
+            die "platform not specified", if( ! defined $platform );
+            die "platform not valid '$platform'", if( $platform=~/^-/ );
+            push @platforms, $platform;
+        }
+    }
+    my $p=$pm->getProject(@_);
+    if( defined $p ) {
+        if( $#platforms >= 0 ) {
+            $p->setPlatforms( @platforms );
+        }
+        return $p;
+    }
+    print "Unknown Project @_", "\n";
+    exit 1;
+}
+
+sub _getContext {
+    my $self=shift;
+    # -- parse args for context specification
+
+    my $context;
+    $context = $self->{api}->getDefaultContext() , if ( ! defined $context );
+    return $context;
+}
+
+sub _shutdownAndReport {
+    my $self=shift;
+    my $report=shift;
+    my $proj=shift;
+    my $step=shift;
+    my $leave_on=(shift||{});
+
+    my @failed=$report->failedReports();
+    print $#failed+1, " platforms failed:\n";
+    foreach my $rep ( @failed ) {
+        my $plat = $rep->platform();
+        print "\t",$plat->name(),"\n";
+    }
+
+    # -- leave on platforms that have failed
+    foreach my $rep ( @failed ) {
+        my $plat=$rep->platform();
+        if( defined $plat ) {
+            $leave_on->{$plat}=1;
+        }
+        print "="x80, "\n";
+        print $plat->name(),"\n";
+        print "-"x80, "\n";
+        print (join "\n\t", $rep->stderr() );
+        print "\n";
+        print "for more info please see log file:\n";
+        print "\t", $proj->logFile($plat,$step),"\n";
+        print "="x80, "\n";
+    }
+    # -- shutdown everything else
+    foreach my $rep ( $report->subReports() ) {
+        my $plat=$rep->platform();
+        if( defined $plat ) {
+            if( !defined $leave_on->{$plat} || $leave_on->{$plat} != 1 ) {
+                print "shutting down ",$plat->name(),"\n";
+                $plat->shutdown();
+            }
+        }
+    }
+    return $#failed+1;
+}

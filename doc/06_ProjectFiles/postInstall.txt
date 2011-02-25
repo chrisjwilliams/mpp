@@ -1,0 +1,9 @@
+[postInstall] section
+-------------------------
+The postinstall section should contain a series of commands that should be run after
+the a packages contents have been installed onto the system.
+
+The postInstall section can be prefixed by either a hostname, or a platform type.
+
+e.g.
+[postInstall::ubuntu_8_10]

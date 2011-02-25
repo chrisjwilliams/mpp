@@ -1,0 +1,23 @@
+## Setting Up a Mac OSX (Darwin) machine for MPP ##
+
+The Mac OSX license conditions do not allow you to install it as a virtual machine, and
+so the unionfs method is the only option. To set this up you will need a clean disk image.
+This is easiest provided by partitioning your hard drive, and installing the OS direct to
+this partition. Apart from system updates, this partition should never be used in a write
+mode, and so it may be a good idea to mount it read only.
+
+Now you have two installs - one a pristine mac and your main startup disk which you will
+use to boot up from under normal circumstances.
+
+# set up ssh #
+Both images must have the same ssh host key:
+copy the key files from one installation to another e.g.
+
+sudo cp /Volumes/Macintosh\ HD/etc/ssh_* /etc
+
+# the mpp user account #
+On your start disk, create a user in the usual way (e.g. mpp_user). Make sure this user
+has system administrator priviledges.
+
+# enable wake on lan #
+In System Preferences, go to "Energy Saver," click on the "Options" tab, and make sure "Wake for Ethernet network administrator access" is selected.

@@ -1,0 +1,94 @@
+SubPackages And Variants
+-----------------------
+From a single project (src base) we may wish to produce several packages.
+This could be because:
+- the package can be built in several different confgurations (or variant).
+- minimal package suitable for runtime only.
+- a developer package containing all that a developer might require (e.g. header files).
+- packages for various levels of documentation
+
+Package Variants
+----------------
+To specify variants,
+simply add a [variants] section to your project configuration file.
+
+e.g.
+
+[variants]
+mysql
+sqllite=sqllite.ini
+dev
+doc
+
+Except where explictly specified, as in the case for sqllite in the above 
+example, mpp will expect to find a file called "config-<variant_name>.ini"  
+for each variant in the list. 
+
+Each variant file has the same format as a normal project file. The main 
+difference is that most configuration sections are inherited from its parent.
+
+For the example of different dependencies e.g. compiling against the sqllite or 
+mysql libraries, this may be as simple as specifying the appropriate dependency
+e.g. sqllite.ini might contain just:
+
+[dependencies]
+sqllite
+
+[build]
+flags="-DSQLLITE"
+
+whereas config-mysql.ini would be:
+
+[dependencies]
+mysql
+
+[build]
+flags="-DMYSQL"
+
+Mpp will launch a seperate build process whenever build dependencies or any 
+build option differs from the parents parameters.
+
+---------------------------------------------------
+Example 1 : Creating developer and runtime packages
+---------------------------------------------------
+We wish to provide seperate packages:
+a) a runtime package that contains just the shared objects, and some 
+   licence information
+b) a developer package that provides header files, and some developer specific
+   documentation. The developer package of course depends on the runtime
+   package.
+
+Our configuration files might look like this:
+
+config.ini:
+-----------
+
+[project]
+name=myLib
+
+[variants]
+dev
+runtime
+
+[build]
+cmd=./configure && make --prefix=${prefix} install
+
+config-dev.ini:
+---------------
+[project]
+dependsVariant=runtime
+
+[install::include]
+
+[install::doc]
+
+config-runtime.ini:
+-------------------
+[project]
+name=myLib
+
+[install::lib]
+
+[install::doc]
+./Licence.txt
+./readme.txt

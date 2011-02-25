@@ -1,0 +1,11 @@
+Platform Configuration Files
+----------------------------
+These reside in the Platforms Directory. The name of the file is the name
+of the platform. The file is in INI format as follows:
+
+[network]
+ip={the ip address of the machine}
+hostname={the hostname of the machine}      N.B. ip will have priority for connection if thye conflict
+
+[startup]
+startcmd={a command line to startup the machine}

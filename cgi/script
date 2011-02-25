@@ -1,0 +1,153 @@
+#!/usr/bin/perl -w
+# Basic Command and control script for directing pages
+#
+
+use FindBin;
+
+# Mpp localisation settings
+my $mppBinaryDir;
+BEGIN {
+    $mppBinaryDir="/home/cwilliams/Projects/packup/dev";
+}
+use lib "$mppBinaryDir";
+use lib "$mppBinaryDir/Externals";
+use INIConfig;
+my $mppConfig=INIConfig->new("$FindBin::Bin/webconfig.ini");
+my $api = new MppAPI( $mppBinaryDir, $mppConfig );
+my $rendered=0;
+
+use CGI;
+use CGI::Session;
+use FileHandle;
+use Page;
+use MppAPI;
+use Redirection;
+use RoleMaster::UserManager;
+use RoleMaster::FileDBDriver;
+use strict;
+
+sub loadPage {
+    my $name=shift;
+    my $cgi=shift;
+    my $session = shift;
+
+    my $page;
+    if( defined $name && $name ne "" ) {
+        # load in and set up the appropriate page
+        my $file="Pages/".$name.".pm";
+        eval { require $file; } or die "Failed to load plugin $name ($file) : $! $@\n";
+        my $mod = "Pages::".$name;
+        $page = $mod->new($cgi , $api, $session);
+    }
+    return $page;
+}
+
+sub renderPageHeader
+{
+    my $fh = shift;
+    my $cgi = shift;
+    my $page = shift;
+
+    if( ! $rendered )
+    {
+        print $fh $cgi->header;
+        print $fh "<html><head>\n";
+        print $fh "<title>", $page->title($fh), "</title>\n";
+        print $fh <<EOT;
+
+        <style type="text/css">
+            table.tab   { border-bottom: solid thin #C0D4E6; text-align: center }
+            td.tab      { padding: 2 12 2 12; width: 80; 
+                          color: #000;
+                          background-color: #FAFAD2 }
+            td.tab a    { color: #000;
+                          text-decoration: none;
+                          padding-left: 10px
+                        }
+            td.tab_actv a { color: #000;
+                            text-decoration: none;
+                            padding-left: 10px
+                        }
+            td.tab_actv { padding: 2 12 2 12; 
+                          width: 80; 
+                          background-color: #C0D4E6 }
+            td.tab_spc  { width: 2 }
+            td.tab_ind  { width: 15 }
+            select.full { width: 100% }
+
+            td.tab a:hover { color: #fff; }
+
+            td.tab:hover
+            {
+                background: #284351;
+                padding-left: 10px
+                padding-right: 10px
+            }
+        </style></head>
+
+EOT
+        print $fh "<body>\n";
+        $rendered = 1;
+     }
+
+}
+
+# -- parse requests
+my $query = new CGI;
+my $session = new CGI::Session("driver:File", $query, 
+                    {Directory=>File::Spec->tmpdir});
+$query->param("CGISESSID",$session->id());
+my $name = $query->param("page");
+my $action=$query->param("action");
+my $page = loadPage( $name, $query );
+$page=new Page(), if( ! defined $page );
+
+# ------- HTML Page Setup
+my $fh = \*STDOUT;
+
+# -- get the appropriate security group
+my $db=$mppConfig->var("cgi","userDB");
+die( "please specify [cgi] userDB in config" ), if( ! defined $db );
+my $driver= new RoleMaster::FileDBDriver( $db );
+my $umg = new RoleMaster::UserManager( $driver );
+my $gpname=$page->groupName();
+if( defined $gpname && $gpname ne "" )
+{
+    my $gp=$umg->getGroup( $gpname );
+    if( ! defined $gp ) {
+        # - set up a new group for the page if it does not exist
+        $gp = $umg->newGroup($gpname);
+        $gp->addRoles($page->roles());
+        $gp->save();
+    }
+    $page->setGroup($gp);
+}
+
+# -- security check
+if ( $page->check() )
+{
+    # perform any pending actions
+    if( defined $action && $action ne "" ) {
+        my $res=$page->execute($action);
+        if( defined $res ) {
+            if( ref($res) eq "Redirection" ) {
+                print $fh $query->redirect($res->url());
+            }
+            else {
+                renderPageHeader($fh,$query,$page);
+                print $fh $res, if( defined $res );
+            }
+        }
+    }
+    # -- launch page
+    renderPageHeader($fh,$query,$page);
+    $page->body($fh);
+}
+else
+{
+    renderPageHeader($fh,$query,$page);
+    print $fh "Unauthorised to access page : \"".($page->name())."\"<br>";
+}
+print $fh "\n</body>\n";
+print $fh "</html>\n";
+

@@ -1,0 +1,913 @@
+# -----------------------------------------------
+# Project
+# -----------------------------------------------
+# Description:
+# Main Functions for Product Generation
+#
+# File format is INI:
+#
+# [platform::name]  <--- one section for each platform
+# publish=location_description_string
+#
+# -----------------------------------------------
+# Copyright Chris Williams 2003
+# -----------------------------------------------
+# Interface
+# ---------
+# new(INIConfig, MPPApi, ProjectInfo)    : new object
+# name()   : name of the project
+# build()  : launch build/pack operations
+# test([platformlist])   : launch test install of built packages
+
+package Project;
+use INIConfig;
+use Platform;
+use File::Basename;
+use Carp;
+use Config;
+use threads;
+use FileHandle;
+use FileExpander;
+use ProjectAnnounce;
+use ProjectInfo;
+use BuildStep;
+use TestStep;
+use Context;
+use Report;
+use strict;
+1;
+
+# -- initialisation
+
+sub new {
+    my $class=shift;
+
+    my $self={};
+    $self->{config}=shift;
+    $self->{api}=shift;
+    $self->{project}=shift;
+    $self->{verbose}=$self->{config}->var("verbose","Project");
+    $self->{verbose}=0, if( !defined $self->{verbose});
+    $self->{loc}=$self->{project}->projectDir();
+    $self->{work}=$self->{loc}."/mpp_work"; # local work area
+    if( ! -d $self->{work} )
+    {
+        mkdir $self->{work};
+    }
+    $self->{workspace} = $self->{project}->name()."_".$self->{project}->version(); # remote workspace
+    bless $self, $class;
+
+    # setup the context object
+    $self->{context} = new Context( $self->id() );
+    $self->{context}->setWorkDir( $self->{work} );
+
+    # setup the execution steps
+    $self->{managers}{build} = new BuildStep("build", $self->{context},$self->{work}, $self );
+    $self->{managers}{test} = new TestStep("test", $self->{context},$self->{work} , $self);
+    $self->{managers}{test}->depends($self->{managers}{build});
+
+
+    return $self;
+}
+
+sub executionSteps {
+    my $self=shift;
+    return values %{$self->{managers}};
+}
+
+sub name {
+    my $self=shift;
+    return $self->{project}->name();
+}
+
+sub version {
+    my $self=shift;
+    return $self->{project}->version();
+}
+
+sub id {
+    my $self=shift;
+    return $self->{project}->name()."__".$self->{project}->version();
+}
+
+sub location {
+    my $self=shift;
+    return $self->{loc};
+}
+
+sub logFile {
+    my $self=shift;
+    my $platform=shift;
+    my $type=shift;
+
+    return $self->{managers}{$type}->logFile($platform);
+}
+
+sub verbose {
+    my $self=shift;
+    if( $self->{verbose} )
+    {
+        for ( @_ ) {
+            print $_, "\n", if (defined $_ );
+        }
+    }
+}
+
+sub setOptions {
+    my $self=shift;
+    my $opt=shift;
+    my $val=shift;
+
+    if( defined $opt) {
+        $self->{options}{$opt}=$val;
+        print "Project: Setting Option : $opt\n";
+        foreach my $packager ( keys %{$self->{packager}} ) {
+            $packager->{config}->setList("options", $opt);
+        }
+    }
+}
+
+#
+# return list of platforms the build failed on
+#
+sub buildFailed {
+    my $self=shift;
+    my $rv=0;
+    foreach my $name ( keys %{$self->{built}} ) {
+        foreach my $platform ( keys %{$self->{built}{$name}} ) {
+            ++$rv, if( $self->{built}{$name}{$platform} ne 0);
+        }
+    }
+    return $rv;
+}
+
+sub platformsFailed {
+    my $self=shift;
+    return (keys %{$self->{errors}});
+}
+
+sub errors {
+    my $self=shift;
+    my @rv;
+    foreach my $platform ( keys %{$self->{errors}} ) {
+        push @rv, $platform.": ".$self->{errors}{$platform};
+    }
+    return @rv;
+}
+
+sub packageName {
+    my $self=shift;
+    my $platform=shift;
+    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+    return $packager->projectName();
+}
+
+sub _errors {
+    my $self=shift;
+    my $platform = shift;
+    my $type = shift;
+    my $txt=shift;
+    $self->{errors}{$platform->name()}=$txt;
+}
+
+sub testFailed {
+    my $self=shift;
+    my $rv=0;
+    foreach my $platform ( keys %{$self->{tested}} ) {
+        ++$rv, if( $self->{tested}{$platform} ne 0);
+    }
+    return $rv;
+}
+
+sub build {
+    my $self=shift;
+    my @platforms=@_;
+
+    if( $#platforms <= 0 )
+    {
+        @platforms=$self->platforms();
+    }
+    my $report;
+    if( $self->{project}->type() eq "build" ) {
+        $report = $self->{managers}{build}->execute( @platforms );
+    }
+    return $report;
+    #return $self->{managers}{build}->status();
+}
+
+sub test {
+    my $self=shift;
+    my @platforms=@_;
+
+    if( $#platforms <= 0 )
+    {
+        @platforms=$self->platforms();
+    }
+    return $self->{managers}{test}->execute( @platforms );
+}
+
+sub buildPlatform {
+    my $self=shift;
+    my $platform=shift;
+    my $log = shift;
+    my $workspace=$self->{workspace};
+    my $rv=0;
+
+    croak "no platform defined", if ( ! defined $platform );
+    print "Project Building on platform :".$platform->name(),(defined $platform->ip())?" ( ".($platform->ip())." )":"" ,"\n";
+    my $localwork=$self->_localwork($platform);
+    my $packager=$self->_getPackager($workspace, $platform, $self->{project});
+
+# install any repositories
+    my $rep=$packager->buildInfo("useRepository");
+    if( defined $rep ) {
+        $self->_installReps($platform, $rep, $log);
+        $platform->updatePackageInfo($log) , if( ! defined $self->{options}{no_deps} );
+    }
+
+# copy over the source code and unpack it
+    my $srcPack=$self->{project}->srcPack();
+    if( ! defined $self->{options}{no_patch} ) {
+#my @patches=($self->{project}->patches(), $packager->buildInfo("patches")) ;
+        my @patches=($packager->patches());
+        for( @patches ) {
+            if( defined $_ && $_ ne "" ) {
+                $srcPack->patch($self->{loc}."/".$_);
+            }
+        }
+    }
+# -- prepare the source code
+    my $src;
+    if( defined $srcPack && defined ($src=$srcPack->packageFile()) )
+    {
+        if( ! defined $self->{options}{no_upload} ) {
+            if( $src!~/^\// )
+            {
+                $src=$self->{loc}."/".$src;
+            }
+            die "unable to find source package '", $src, "'\n" , if( !-e $src );
+            my $wk=$packager->srcUploadDir($self);
+            $wk=$workspace, if( ! defined $wk );
+            $platform->upload( $wk, $src );
+            if( -f $src && ($wk eq $workspace) ) {
+            # -- only unpack src if its transfered to our workdir
+                print $platform->name()."> unpacking source....\n";
+                eval {
+                    $platform->work( $workspace, $log, "unpack", basename($src) );
+                };
+            }
+        }
+    }
+    else {
+        $self->verbose("no srcPack defined\n");
+    }
+
+    # copy any defined files
+    # format of copy:
+    # srcfile destfile
+    # (srcfile1 dest1) (srcfile2 dest2) ....
+    my $copy=$packager->buildInfo("copy");
+    my $srcDir=$self->{project}->srcDir();
+    {
+        # within these braces, workspace includes the srcDir
+        my $workspace=$self->{workspace}."/$srcDir", if( defined $srcDir && $srcDir ne "" );
+        if( defined $copy )
+        {
+            $self->verbose("copying files\n");
+            foreach my $fileItem ( split( /\)\s+\(/, $copy ) ) {
+                $fileItem=~s/^\s*\(?\s*(.*)\)?\s*/$1/;
+                $fileItem=~s/^(.+)\)\s*$/$1/;
+                my @ds = split( /\s+/, $fileItem );
+                die "bad format for copy ($#ds items) format required \"(src dst) (src dst) ...\" = '$fileItem'", if ($#ds != 1);
+                my $local=$self->{loc}."/".$ds[0];
+                die "file $local does not exist", if( ! -f $local );
+                my $remfile=$self->{project}->expandVars($ds[1]);
+                $remfile=$workspace."/".$remfile, if( $remfile!~/^[\\\/]/);
+                $platform->copyFile( $local, $remfile, $log );
+            }
+        }
+        my $copyex=$packager->buildInfo("copyExpand");
+        if( defined $copyex )
+        {
+            $self->verbose("copying expanded files\n");
+            my $env=$self->_environment($platform);
+            $env->merge($packager->env());
+            $self->_copyExpandFiles($log, $platform, $copyex, $packager, $workspace);
+        }
+        my $link=$packager->buildInfo("link");
+        if( defined $link )
+        {
+            $self->verbose("linking files\n");
+            foreach my $fileItem ( split( /\)\s+\(/, $link ) ) {
+                $fileItem=~s/^\s*\(?\s*(.*)\)?\s*/$1/;
+                $fileItem=~s/^(.+)\)\s*$/$1/;
+                my @ds = split( /\s+/, $fileItem );
+                die "bad format in configuration for [build] link= ($#ds items) = '$fileItem'", if ($#ds != 1);
+                my $file=$self->{project}->expandVars($ds[0]);
+                my $link=$self->{project}->expandVars($ds[1]);
+                $link=$platform->workDir()."/".$workspace."/".$link, if( $link!~/^[\\\/]/);
+                $file=$platform->workDir()."/".$workspace."/".$file, if( $file!~/^[\\\/]/);
+                $platform->link($file,$link,$log);
+            }
+        }
+
+        # install any dependencies
+        #print $log "========================== MPP BUILD START =================================\n";
+    }
+
+        # perform the build
+        $self->buildPlatformVariant($self->{project}, $platform, $workspace, $log); 
+        #$rv=$packager->build($localwork, $log, $self->{loc} );
+        #print $log "========================== MPP BUILD END ==================================\n";
+
+        # clean up
+        my $shutdown=0; # done at a higher level now
+        if( $shutdown ) { 
+            # -- shutdown the machine
+            $platform->shutdown();
+        }
+        else {
+            if( defined $rep ) {
+                $self->_removeReps($platform, $rep);
+                $platform->updatePackageInfo($log) , if( ! defined $self->{options}{no_deps} );
+            }
+        }
+#}; # end eval
+#if( $@ ) {
+#    if( ref( $@ ) eq "Report" )
+#    {
+#         print $log "failed with error :", $@->returnValue(),"\n",
+#                    $@->stdout(),"\n", $@->stderr();
+#    }
+#    else {
+#        print $log $@;
+#    }
+#    #$self->_errors($platform, "build", $@);
+#}
+    my $report = new Report();
+    $report->setReturnValue($rv);
+    return $report;
+}
+
+sub dependencies {
+    my $self=shift;
+    my $type=shift;
+
+    # return a list of SoftwareDependency objects
+    my @deps;
+    my $swmgr = $self->{api}->getSoftwareManager();
+    foreach my $hash ( $self->{project}->dependencies()->dependencies($type) )
+    {
+        push @deps, $swmgr->getPackage($hash->{name}, $hash->{version});
+    }
+    return @deps;
+}
+
+sub buildPlatformVariant {
+    my $self=shift;
+    my $variant=shift;
+    my $platform=shift;
+    my $workspace=shift;
+    my $log=shift;
+
+    my @variants=$variant->variants();
+    # -- if no variants are defined, consider this variant to be a buildable project
+    if( $#variants < 0 ) {
+        my $name=$variant->name();
+        if( $variant->buildable() ) {
+            $self->verbose("building variant $name in $workspace");
+            if( ! defined $self->{built}{$name}{$platform} ) {
+                my $localwork=$self->_localwork($platform);
+                my $packager=$self->_getPackager($workspace, $platform, $variant);
+                print $log "=== MPP package ",$name," START ==========================\n";
+                $platform->installPackages( $log, $self->_buildDependencies( $platform, $packager ) ), if( ! defined $self->{options}{no_deps} );
+                print $log "--- MPP BUILD ",$name," START ----------------------------\n";
+                my $rv=$packager->build( $localwork, $log, $self->{loc} );
+                print $log "--- MPP BUILD ",$name," END   ----------------------------\n";
+                print $log "=== MPP package ",$name," END ============================\n";
+                $self->{built}{$name}{$platform}=$rv;
+            }
+        }
+    }
+    else {
+        foreach my $var ( @variants ) {
+            $self->buildPlatformVariant($var, $platform, $workspace, $log );
+        }
+    }
+}
+
+
+sub publish {
+    my $self=shift;
+    my $release=shift;
+
+    # -- publish package files
+    foreach my $platform ( $self->platforms() )
+    {
+        $self->_publishPlatform($platform, $release);
+    }
+    my @ann=$self->{config}->list("announce");
+    # -- announce to the world
+    foreach my $a ( @ann ) {
+        my $config=$self->{config}->section("announcer::$a");
+        die "unknown announcer '$a'", if( ! defined $config );
+        my $aobj=ProjectAnnounce->new($self, $config );
+        $aobj->publish($release);
+    }
+}
+
+sub unpublish {
+    my $self=shift;
+    my $release=shift;
+
+    foreach my $platform ( $self->platforms() )
+    {
+        $self->_unpublishPlatform($platform, $release );
+    }
+    my @ann=$self->{config}->list("announcers");
+    require ProjectAnnounce;
+    foreach my $a ( @ann ) {
+        my $config=$self->{config}->section("announcer::$a");
+        die "unknown announcer '$a'", if( ! defined $config );
+        my $aobj=ProjectAnnounce->new($self, $config );
+        $aobj->unpublish($release);
+    }
+}
+
+sub setPlatforms {
+    my $self=shift;
+    if( @_ ) {
+        $self->{config}->clearList("platforms");
+        foreach my $item ( @_ ) {
+            $self->{config}->setList("platforms", $item );
+        }
+        undef $self->{platforms};
+    }
+}
+
+#
+# add a list of software package dependencies to the 
+# specified dependency list (one on "build","test", or generic represented by "")
+# addDependencies(list, @packages)
+#
+sub addDependencies {
+    my $self=shift;
+    $self->{project}->dependencies()->addDependencies(@_);
+}
+
+#
+# remove a list of software package dependencies from the
+# specified dependency list (one on "build","test", or generic represented by "")
+# addDependencies(list, @packages)
+#
+sub removeDependencies {
+    my $self=shift;
+    $self->{project}->dependencies()->removeDependencies(@_);
+}
+
+sub addPlatforms {
+    my $self=shift;
+    foreach my $item ( @_ ) {
+        $self->{config}->setList("platforms", $item );
+    }
+}
+
+sub removePlatforms {
+    my $self=shift;
+    foreach my $item ( @_ ) {
+        $self->{config}->removeItemFromList("platforms", $item );
+    }
+}
+
+sub platforms {
+    my $self=shift;
+    if( ! defined $self->{platforms} ) {
+        @{$self->{platforms}} = $self->{api}->getContextualisedPlatforms( $self->{context}, $self->{config}->list("platforms"));
+    }
+    return @{$self->{platforms}};
+
+}
+
+sub hasPlatform {
+    my $self=shift;
+    my $name=shift;
+    return (defined $self->platform($name))?1:0;
+}
+
+sub platform {
+    my $self=shift;
+    my $name=shift;
+
+    my $platform;
+    foreach my $plat ( $self->platforms() )
+    {
+        $platform=$plat, if ($plat->name() eq $name);
+    }
+    return $platform;
+}
+
+sub packageFile {
+    my $self=shift;
+    my $platform=shift;
+    return $self->{config}->var("platform::".$platform->name(),"packageFileName");
+}
+
+sub install {
+    my $self=shift;
+    my $platform=shift;
+    my $log=shift;
+    if( ! defined $log ) {
+        $log=FileHandle->new(">&main::STDOUT");
+    }
+
+    my $name=$self->packageName($platform);
+    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+    my $rep=$packager->buildInfo("useRepository");
+    $self->_installReps($platform, $rep, $log);
+    $platform->updatePackageInfo($log);;
+    $platform->installPackages($log, $name);
+    $self->_removeReps($platform, $rep);
+    $platform->updatePackageInfo($log);;
+}
+
+
+# -- private methods -------------------------
+
+sub _installReps {
+    my $self=shift;
+    my $platform=shift;
+    my $pubString=shift;
+    my $log=shift;
+
+    if( defined $pubString ) {
+        my ($pub,$version) = split ( /:/, $pubString );
+        if( defined $pub && defined $version ) {
+            my $pf=$self->{api}->getPublisherFactory();
+            my $publisher=$pf->getPublisher( $pub );
+#            $publisher->addRepository($platform, $version );
+            print $log "adding repository ",$publisher->name(), " version: $version\n";
+            $platform->addPackageRepository($log,$publisher,$version);
+        }
+        else {
+            die "useRepository badly formed (need repository_name:release) : $pubString\n";
+        }
+    }
+}
+
+sub _removeReps {
+    my $self=shift;
+    my $platform=shift;
+    my $pubString=shift;
+
+    if( defined $pubString ) {
+        my ($pub,$version) = split ( /:/, $pubString );
+        if( defined $pub && defined $version ) {
+            my $pf=$self->{api}->getPublisherFactory();
+            my $publisher=$pf->getPublisher( $pub );
+            #$publisher->addRepository($platform, $version );
+            $platform->removePackageRepository($publisher, $version );
+        }
+        else {
+            die "useRepository badly formed (need repository_name:release) : $pubString\n";
+        }
+    }
+}
+
+sub _testPlatform {
+    my $self=shift;
+    my $platform=shift;
+    my $log = shift;
+
+    my $rv=0;
+    my $localwork=$self->_localwork($platform);
+
+    my $testdir=$self->{workspace}."/mpp_test";
+    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+
+    # -- copy file to test publish area
+    $self->_publishPlatform($platform, "mpp_test" );
+
+    # install any required repositories
+    my $rep=$packager->buildInfo("useRepository");
+    $self->_installReps($platform, $rep, $log);
+
+# -- add test repository to platforms package manager
+    foreach my $publisher ( $self->_getPublisher($platform) )
+    {
+        $platform->addPackageRepository($publisher, "mpp_test" );
+    }
+    $platform->updatePackageInfo($log);;
+
+# -- invoke the install
+    $platform->updatePackageInfo($log);
+    $self->{tested}{$platform}=$platform->installPackages( $log, $packager->projectName());
+
+# ---- setup the testing environment
+    my $binfo=BuildInfoMPP->new($self->{project},$platform,$self->{workspace});
+    $self->_copyFiles($log, $platform, $binfo->sectionInfo("test","copy") );
+    $self->_copyExpandFiles($log, $platform, $binfo->sectionInfo("test","copyExpand"), $packager );
+    $self->_unpack($log, $platform, $binfo->sectionInfo("test","unpack") );
+
+    # -- run any tests
+    my $cmd=$binfo->sectionInfo("test","cmd");
+    if( defined $cmd &&  $cmd ne "" ) {
+        $rv=$platform->work($testdir, $log, "run", $cmd);
+    }
+
+    # ---- remove the package
+    $platform->uninstallPackages( $packager->projectName() );
+
+    # -- clean up
+    $self->_unpublishPlatform($platform, "mpp_test" );
+    $self->_removeReps($platform, $rep);
+    return $rv;
+}
+
+sub _getPackages { 
+    my $self=shift;
+    my $platform=shift;
+
+    my @packs=();
+    # -- get built packages
+    if( $self->{project}->type() eq "build" ) {
+        my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+        my $pack=$self->{work}."/".$platform->name()."/";
+        my @files=();
+        for ( $packager->packageFiles() ) {
+            if( -f $pack.$_ ) {
+                push @files, $pack.$_;
+            }
+            else {
+                print "No package '$_' available for platform : ", $platform->name(),"\n";
+            }
+        }
+        my $pkg=Package::Package->new( { name=>$self->name(),
+                                         version=>$self->version(),
+                                         platform=>$platform->platform(),
+                                         arch=>$platform->arch()
+                                         }
+                                     );
+        $pkg->setFiles(@files);
+        push @packs, $pkg;
+    }
+    # -- pre-packaged files
+    push @packs, $self->{project}->prePackaged();
+    return @packs;
+}
+
+sub unpublishPlatform {
+    my $self=shift;
+    my $platform=shift;
+    my $release=shift;
+    my @publishers=@_;
+
+    # -- send to the publisher
+    my @packs=$self->_getPackages($platform);
+    if( $#packs >= 0 ) {
+        foreach my $publisher ( @publishers ) {
+            my @ppacks=@packs;
+            #my @ppacks;
+            #for(@packs) {
+            #    if( grep( $_->type() , $publisher->packageTypes()) ) {
+            #        push @ppacks, $_;
+            #    }
+            #}
+            if( $#ppacks>=0) {
+                $self->verbose("removing @ppacks from :'".($publisher->name())."'");
+                $publisher->remove( $release, @ppacks );
+            }
+        }
+    }
+}
+
+sub publishPlatform {
+    my $self=shift;
+    my $platform=shift;
+    my $release=shift;
+    my @publishers=@_;
+
+    # -- send to the publisher
+    my @packs=$self->_getPackages($platform);
+    if( $#packs >= 0 ) {
+        foreach my $publisher ( @publishers ) {
+            my @ppacks=@packs;
+            #for(@packs) {
+            #    my $type=$_->type();
+            #    $self->verbose("checking if publisher ".$publisher->name()." supports packages of type $type\n");
+            #    if( grep( /$type/i , $publisher->packageTypes()) ) {
+            #            push @ppacks, $_;
+            #    }
+            #    else {
+            #        $self->verbose("package type $type unsupported");
+            #    }
+            #}
+            if( $#ppacks>=0) {
+                if($self->{verbose}) {
+                    my $str="";
+                    for(@ppacks) {
+                        $str.=$_->name();
+                    }
+                    $self->verbose("publishing $str to :'".($publisher->name())."'");
+                }
+                $publisher->add( $release, @ppacks );
+            }
+        }
+    }
+    else {
+        warn("no packages defined");
+    }
+}
+
+sub _publishPlatform {
+    my $self=shift;
+    my $platform=shift;
+    my $release=shift;
+
+    $self->verbose("publishing for platform :'".($platform->name())."'");
+    my @publishers=$self->_getPublisher($platform);
+    die("no publishers found for ".($platform->hostname())), if ( $#publishers < 0 );
+    $self->publishPlatform($platform, $release, @publishers);
+    #my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+    #my $pack=$self->{work}."/".$platform->name()."/";
+    #my @packs=();
+    #for ( $packager->packageFiles() ) {
+    #    if( -f $pack.$_ ) {
+    #        push @packs, $pack.$_;
+    #    }
+    #    else {
+    #        print "No package '$_' available for platform : ", $platform->name(),"\n";
+    #    }
+    #}
+    #if( $#packs >= 0 ) {
+    #    foreach my $publisher ( @publishers ) {
+    #        $self->verbose("publishing @packs to :'".($publisher->name())."'");
+    #        $publisher->add($platform->platform(), $release, @packs );
+    #    }
+    #}
+}
+
+sub _unpublishPlatform {
+    my $self=shift;
+    my $platform=shift;
+    my $release=shift;
+
+    my @publishers=$self->_getPublisher($platform);
+    $self->unpublishPlatform($platform,$release,@publishers);
+#    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+#    foreach my $publisher ( @publishers ) {
+#        foreach my $pack ( $packager->packageFiles() ) {
+#            $publisher->remove($platform->platform(), $release, $pack );
+#        }
+#    }
+}
+
+sub _getPublisher {
+    my $self=shift;
+    my $platform=shift;
+    require PublisherFactory;
+    my $pf=$self->{api}->getPublisherFactory();
+    return $pf->getPlatformPublishers($platform);
+}
+
+sub _getPackager
+{
+    my $self=shift;
+    my $workspace=shift;
+    my $platform=shift;
+    my $info=shift;
+
+    my $name=$info->name();
+    if ( ! defined $self->{packager}{$platform}{$name} )
+    {
+        my $type=$platform->packageType();
+        if( ! defined $type ) {
+            die "packageType not defined for ".($platform->name());
+        }
+        $self->{packager}{$platform}{$name}=$self->{api}->createPackager($type, $platform, $workspace, $self->{config}, $info );
+        # -- propagate options
+        foreach my $opt ( keys %{$self->{options}} ) {
+            $self->{packager}{$platform}{$name}->{config}->setList("options", $opt);
+        }
+        $self->{packager}{$platform}{$name}->setEnv("workdir",$workspace);
+    }
+    return $self->{packager}{$platform}{$name};
+}
+
+sub _localwork {
+    my $self=shift;
+    my $platform=shift;
+    if( UNIVERSAL::isa($platform, 'Platform' ) ) {
+        $platform=$platform->name();
+    }
+    #my $localwork=$self->{work}."/".$platform->name();
+    my $localwork=$self->{work}."/".$platform;
+    if( ! -d $localwork ) {
+        mkdir $localwork or die ($self->name().": unable to create local working directory $localwork");
+    }
+    return $localwork;
+}
+
+sub _buildDependencies {
+    my $self=shift;
+    my $platform=shift;
+    my $packager=shift;
+
+    my $bd=$self->{config}->var("build::".$platform->name(), "buildDependencies");
+    my @bud=();
+    if( defined $bd )
+    {
+        @bud=split(/,/, $bd);
+    }
+    # -- add generic dependencies
+    my $deps=$self->{project}->dependencies();
+    foreach my $pkg ( $deps->platformDependencies($platform,"build"), $packager->buildDependencies() ) {
+        push @bud,$pkg->packageNames("build");
+    }
+    return @bud;
+}
+
+sub _copyFiles {
+    my $self=shift;
+    my $log=shift;
+    my $platform=shift;
+    my $copy=shift;
+
+    my $workspace=$self->{workspace};
+    if( defined $copy )
+    {
+        $self->verbose("copying files\n");
+        foreach my $fileItem ( split( /\)\s+\(/, $copy ) ) {
+            $fileItem=~s/^\s*\(?(.*)\)?\s*/$1/;
+            $fileItem=~s/^(.+)\)\s*$/$1/;
+            my @ds = split( /\s+/, $fileItem );
+            die "bad format for copy ($#ds items) = '$fileItem'", if ($#ds != 1);
+            my $local=$self->{loc}."/".$ds[0];
+            die "file $local does not exist", if( ! -f $local );
+            my $remfile=$self->{project}->expandVars($ds[1]);
+            $remfile=$workspace."/".$remfile, if( $remfile!~/^[\\\/]/);
+            $platform->copyFile( $local, $remfile, $log );
+        }
+    }
+}
+
+sub _environment {
+    my $self=shift;
+    my $platform=shift || die("specify a platform");
+    require Environment;
+    my $env=Environment->new($self->{project}->env());
+    $env->add($platform->env());
+    return $env;
+}
+
+sub _copyExpandFiles {
+    my $self=shift;
+    my $log=shift;
+    my $platform=shift;
+    my $copyex=shift;
+    my $packager=shift;
+    my $workspace=shift||$self->{workspace};
+    if( defined $copyex )
+    {
+        $self->verbose("copying expanded files (workspace=$workspace)\n");
+        my $env=$self->_environment($platform);
+        if( defined $packager ) {
+             $env->merge($packager->env());
+        }
+        foreach my $fileItem ( split( /\)\s+\(/, $copyex ) ) {
+            $fileItem=~s/^\s*\(?\s*(.*)\s*\)?\s*/$1/;
+            $fileItem=~s/^\s*(.+)\s*\)\s*$/$1/;
+            $self->verbose("copyExpand(): '$fileItem'");
+            my @ds = split( /\s+/, $fileItem );
+            die "bad format for copyExpand ($#ds items) = '$fileItem'", if ($#ds != 1);
+            my $local=$self->{loc}."/".$ds[0];
+            die "copyExpand: file \"$local\" does not exist", if( ! -f $local );
+            my $remfile=$self->{project}->expandVars($ds[1]);
+            $remfile=$platform->workDir()."/".$workspace."/".$remfile, if( $remfile!~/^[\\\/]/);
+            my $fe=FileExpander->new($local, $env);
+            my $fh=RemoteFileHandle->new($platform);
+            print $log "expanding file $local to ".($platform->name()).":$remfile\n", if ( defined $log);
+            $fh->open(">".$remfile) or die("unable to write file $remfile");
+            $fe->copy($fh);
+            $fh->close() or die("unable to write file $remfile");
+        }
+    }
+}
+
+sub _unpack {
+    my $self=shift;
+    my $log=shift;
+    my $platform=shift;
+    my $file=shift;
+
+    if ( defined $file && $file ne "" ) {
+        if( $file!~/^\// )
+        {
+            $file=$self->{loc}."/".$file;
+        }
+        $platform->upload( $self->{workspace}, $file );
+        if( -f $file ) {
+            $self->verbose($platform->hostname()."> unpacking $file....");
+            $platform->work( $self->{workspace}, "unpack", basename($file) );
+        }
+    }
+}

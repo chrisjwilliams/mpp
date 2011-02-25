@@ -1,0 +1,61 @@
+## Platform Specific Data ##
+
+Configuration Directory: PackageManager/Platforms/Data
+
+The machine specific configuration file must specify the platform type.
+This key is used to search for information specific to that platform.
+Each platform should have a corresponding file in the configuration
+directory.
+
+# location information - the [locations] section #
+When building a package with MPP it is important to know where to
+install the different build products in a deployment environment.
+These locations have default values, but adding a [locations] section
+to your platform configuration file allows you to override, or add extra
+ones (In the context of the Package Configuration files these values are
+referred to by the ${install::name} variables).
+
+e.g.
+
+[locations]
+python_lib=/usr/lib64/python2.6/dist-packages
+lib=/usr/lib64
+
+# package information - the [pack] section #
+Different platforms can often take radically different approaches to packaging.
+Not only is it a difference in the naming conventions used, policies on how
+to deal with mutliple versions vary and often the components of a package can 
+spread over many packages (e.g. seperate developer,documentation and runtime packages).
+
+This is described to mpp through the [pack::pkgname] sections e.g. [pack::c++]
+The section name can be expanded with a version identifier where required.
+e.g. [pack::qt::4]
+
+The section contains lists of local package names that should be installed whenever
+a project asks for a specific dependency e.g.
+
+[pack::qscintilla::1.7]
+qscintilla.1
+
+Mpp allows the concept that any dependency may be split between runtime and
+build packages. As an example, the lapack package on ubuntu 9.04 would be
+described thus:
+
+[pack::lapack]
+build=liblapack-dev
+runtime=liblapack3gf
+
+Thus mpp will install liblapack-dev before building the package, and the
+runtime package will be added to the list of requirements for the final
+package that it creates.
+
+You can also set package specific variables for use in the Package Configuration
+file. e.g.
+
+[pack::qt::3]
+build=qt3-devel
+runtime=qt3
+qtdir=/usr/lib/qt3
+qmake=${qtdir}/bin/qmake
+
+Will create variables ${pack::qt::3::qtdir} and ${pack::qt::3::qmake}

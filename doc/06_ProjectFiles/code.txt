@@ -1,0 +1,24 @@
+[code] Section
+--------------
+The code section can be prefixed by either a hostname, or a platform type
+to specify specific patches
+e.g.
+[code::ubuntu_8_10]
+
+Variable     : Description                                   : Status
+--------------------------------------------------------------------
+srcDirectory : specify the name of the top level directory   : Required
+srcPack      : specify the filename of the src package       : Required
+                This package must be in the ProjectDirectory : 
+patches      : comma seperated list of pathch files to apply : Optional
+               The patches must be taken relative to the
+               srcDirectory 
+
+
+Creating patches with diff
+--------------------------
+On unix systems the procedure for creating patches is as follows:
+
+For a single file:
+         cd ${srcDirectory};
+         diff -u original_file new_file > original.patch

@@ -1,0 +1,12 @@
+## [test] section ##
+
+This section allows you to specify the testing environment and
+the testing required.
+
+| keywords          | funtion                                   | example
+| ------------------------------------------------------------------------------------------
+| copy              | copy a file to the remote working area    | copy=(sourcefile destinationfile),(src2 dst2)
+| copyExpand        | expand variables in a file and copy to    | copyExpand=(src1 dst2),(src2 dst2)
+|                   | remote working area                       |
+| unpack            | copy a compressed file and unpack it      | unpack=pack1.tgz,pack2.tar.bz2
+| cmd               | command to launch any tests               | cmd=./runtests

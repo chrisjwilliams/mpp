@@ -1,0 +1,54 @@
+#!/usr/bin/perl
+#
+# make some junk in the source tree like a really naughty project
+# as well as a seperate build dir like a well behaved build system should
+#
+use FindBin;
+use FileHandle;
+use strict;
+if( -d $FindBin::Bin."/../../../TestConfig" )
+{
+    # we only want this to run on a platform not an mpp co area
+    print "Run in TestConfig - doing nothing\n";
+    exit 1;
+}
+my $dirty_build=$FindBin::Bin."/build_dirty";
+my $clean_build=$FindBin::Bin."/../build_clean";
+if( ! -d $dirty_build ) {
+    mkdir $dirty_build or die "unable to create dir $!";
+}
+if( ! -d $clean_build ) {
+    mkdir $clean_build or die "unable to create dir $!";
+}
+
+my @dirty_files=qw( lib1.so lib2.so lib3.a include1.h include2.h);
+my @clean_files=qw( lib3.so lib4.so lib5.a include3.h include4.h);
+my $fh=FileHandle->new();
+foreach my $file ( @dirty_files )
+{
+    my $f=$dirty_build."/".$file;
+    $fh->open(">".$f) or die "unable to open $f : $!";
+    print $fh "#", $file, "\n";
+    $fh->close();
+}
+foreach my $file ( @clean_files )
+{
+    my $f=$clean_build."/".$file;
+    $fh->open(">".$f) or die "unable to open $f : $!";
+    print $fh "#", $file, "\n";
+    $fh->close();
+}
+
+# do we have an installation prefix?
+# if so then lets dump some files there too
+if( @ARGV ) {
+    my $base=shift @ARGV;
+    my @install_files=qw(/wibble /usr/wibble2 /usr/bin/wibblewibble);
+    foreach my $file ( @install_files ) {
+        my $f=$base."/".$file;
+        $fh->open(">".$f) or die "unable to open $f : $!";
+        print $fh "#", $file, "\n";
+        $fh->close();
+    }
+}
+exit 0;

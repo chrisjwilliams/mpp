@@ -1,0 +1,7 @@
+--- hello.pl.orig	2009-05-29 09:13:56.000000000 +0100
++++ hello.pl	2009-05-29 09:14:08.000000000 +0100
+@@ -1,3 +1,3 @@
+ #!/usr/bin/perl
+ #
+-print "Hello World!\n";
++print "Hello All The World!\n";
