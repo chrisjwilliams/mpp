@@ -22,7 +22,6 @@ sub new {
     @{$self->{stdout}}=();
     @{$self->{stderr}}=();
     @{$self->{reports}}=();
-        $self->{count}=0;
     return $self;
 }
 
@@ -53,7 +52,6 @@ sub addReport {
         croak("report::addReport() report objects only can be passed -get ".(ref($rep))),
                 if( ref($rep) ne "Report" ); 
         push @{$self->{reports}}, $rep;
-        print "count=",++$self->{count},"\n";
     }
 }
 
