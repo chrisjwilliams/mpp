@@ -27,6 +27,27 @@ mpp -config
 Extra directories can be added by adding [platfromLocation] sections to the mpp configuration
 files (see General Configuration for more info).
 
+# The [system] section #
+This section is required in all machine descriptions.
+
+Variables   |  Required | Description
+--------------------------------------------------------------------
+arch        |   yes     | The architecture tag of the system (e.g i386, amd64)
+platform    |   yes     | A tag to describe the type of os deployed on the 
+            |           | architecture. Used as a tag in the platforms database.
+bootDelay   |   no      | Time in seconds to wait after a request to startup the 
+            |           | box has returned, to allow for the system to bootup and
+            |           | and stabilise.
+
+# The [network] section #
+Variables   |  Required       | Description
+--------------------------------------------------------------------
+login       |  yes            | The user name to perform all actions under
+hostname    |  for ssh        | The hostname of the box
+ip          |  for ssh        | The ip of the box (do not need both hostname and ip)
+mac         | for wake-on-lan | The mac address of the box
+broadcast   | for wake-on-lan | The broadcast address to send the Wake-on-lan packets to
+
 # Machine configuration examples #
 #
 Example 1 : Machine on the local network
@@ -101,15 +122,16 @@ login=mympploginaccountname
 [packager]
 type=apt
 
-Example 4 : ESXi Server using ssh
+Example 4 : ESXi Server using ssh 
 ---------------------------------
+DEPERCATED - now use [manager] type=VMWareESXi
      Where the use of RCLI is not appropriate and the ESXi server has been enabled for ssh
 login. This describes a fedora_11 64bit machine hosted on the ESXi server myESXiBox.
 
 [vmware]
 id=208
 serverType=ESXiSSH
-server=myESXiBox
+server=myESXiServer
 
 [system]
 bootDelay=45
@@ -125,7 +147,7 @@ login=vmware
 type=yum
 packageType=rpm
 
-Note that the myESXiBox has to have its own platform description file :
+Note that the myESXiServer has to have its own platform description file :
 
 # The ESXi host server platform description file
 [system]
@@ -134,7 +156,7 @@ platform=esx
 bootDelay=20
 
 [network]
-hostname=myESXiBox
+hostname=myESXiServer
 login=root
 mac=00:24:60:9c:d6:f4
 broadcast=192.168.99.255
@@ -166,6 +188,19 @@ login=ubuntu
 
 [packager]
 type=apt
+
+Example 6 : VMWare ESXi service (via ssh access)
+------------------------------------------------
+[manager] 
+type=VMWareESXi
+server=myESXiServer
+
+[vmware]
+id=208
+
+[system]
+arch=amd64
+platform=ubuntu_10_10
 
 # The [startup] section #
 When a machine boots up, you may need to set it up before it can be used by mpp
