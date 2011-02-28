@@ -13,18 +13,27 @@ to mpp to enable it to do its work. Information is broken down in two main secti
 
 ## Machine Specific Data ##
 
-Configuration Directory: PackageManager/Platforms
-
+# Machine configuration files #
 For each machine available to mpp, a seperate file must be provided. The name
 of the file will be the name that the machine will be referred to by mpp.
 Note that the machine has to be configured for use by MPP, to allow it to log on 
-and act as administrator when required (See chapter TODO )
+and act as administrator when required (See chapter TODO ). These files are 
+picked up from specific Platfrom Directories. The list of directories that
+will be searched for your installation of mpp can be found with the following command.
+<code>
+mpp -config
+</code>
 
+Extra directories can be added by adding [platfromLocation] sections to the mpp configuration
+files (see General Configuration for more info).
+
+# Machine configuration examples #
+#
 Example 1 : Machine on the local network
 ----------------------------------------
      This describes a Mac OSX machine on the local network named "my_mac". By providing
 the internet cards mac address and your lan's broadcast address in the network section you 
-allow mpp to try and start the machine through the wake on lan protocol.
+allow mpp to try and start the machine through the wake-on-lan protocol.
 
 [system]
 arch=i386
@@ -129,4 +138,45 @@ hostname=myESXiBox
 login=root
 mac=00:24:60:9c:d6:f4
 broadcast=192.168.99.255
+
+# Platforms managed by an intermediate service, the [manager] section #
+Any machine that you interact with indirectly via some intermediate service, 
+will need a [manager] section to indicate to mpp what the service is.
+Managers are plugin's that define how to use a service and the "type" variable 
+is used to specify which plugin to use. The service is likely to be provided
+by some remote server which must also be specified (and an appropriate machine configuration
+file provided to describe it to mpp).
+
+Example 5 : EoverI brokered cloud services
+------------------------------------------
+[manager]
+type=EoverI
+server=localhost
+
+[eoveri]
+id=emi-F3D318CD
+type=m1.small
+
+[system]
+arch=amd64
+platform=ubuntu_10_10
+
+[network]
+login=ubuntu
+
+[packager]
+type=apt
+
+# The [startup] section #
+When a machine boots up, you may need to set it up before it can be used by mpp
+to build projects etc. The [startup] section allows you to specfiy a series of commands
+that will be run on the machine immediately after it has been started up.
+
+e.g.
+
+[startup]
+sudo addgroup mpp
+sudo adduser ubuntu mpp
+sudo chgrp mpp /etc/apt/sources.list.d
+sudo chmod g+w /etc/apt/sources.list.d
 
