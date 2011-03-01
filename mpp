@@ -86,7 +86,8 @@ foreach my $cmd ( @allowedcmds ) {
         if ( defined $ARGV[0] && $ARGV[0]=~/help/i ) {
             $cmd="help_".$cmd;
         }
-        exit $cmds->$cmd(@ARGV);
+        my $rv=$cmds->$cmd(@ARGV);
+        exit $rv, if( defined $rv );
         $found=1;
         last;
     }
