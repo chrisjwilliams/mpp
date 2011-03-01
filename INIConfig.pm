@@ -228,7 +228,7 @@ sub setVar {
     if( !defined $self->{vars}{$section} )
     {
         push (@{$self->{sections}}, $section),
-                if( ! grep /^$section/, @{$self->{sections}} );
+                if( ! grep /^\Q$section\E/, @{$self->{sections}} );
     }
     $self->{vars}{$section}{$var}=$val;
 }
@@ -330,7 +330,7 @@ sub readFile {
         # - section header
         if ( $line=~/^\s*\[(.+)\]\s*$/ ) {
             $section=$1;
-            if( ! $self->definedSection($section) ) {
+            if( ! $self->definedSection( qr/\Q$section\E/ ) ) {
                 push @{$self->{sections}}, $section;
             }
             next;

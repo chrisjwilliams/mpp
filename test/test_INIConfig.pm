@@ -31,8 +31,15 @@ sub definedSection {
     my $config = INIConfig->new();
     my $section = "pack::c++";
     die("section $section should not be defined"), if ($config->definedSection($section) );
+    $config->setVar("pack::c", "testval", "testval"); # add a var that looks right if not escaped properly
+    die("section $section should not be defined, whereas c is defined!"), if ($config->definedSection( "\Q$section\E") );
+
     $config->setVar($section, "testval", "testval");
-    foreach my $s2 ( 'pack\:\:c\+\+', 'pack::c\+\+(::.+)?', "\Q$section\E", "\Q$section\E"."(::.+)?"  ) {
+    die("section $section should be defined"), if ( ! $config->definedSection( qr/\Q$section\E/ms));
+
+    #my $tag="pack\:\:c\+\+(::.+)?";
+    my $tag = qr/\Q$section\E(::.+)?/ms; # regex as a variable
+    foreach my $s2 ( 'pack\:\:c\+\+', 'pack::c\+\+(::.+)?', "\Q$section\E", "\Q$section\E"."(::.+)?", qr/pack::\Qc++\E/m , qr/\Qpack::c++\E(::.+)?/ms, $tag ) {
         die("section $s2 should be defined"), if ( ! $config->definedSection($s2) );
     }
 

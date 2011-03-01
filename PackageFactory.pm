@@ -60,13 +60,15 @@ sub getPackage {
         # define here to avoid problems with circular dependencies
         $self->{packages}{$name}{$vertag}{$platform}=$pkg;
 
-        if( ! $packdb->definedSection("\Q$tag\E(::.+)?") ){
-            $self->verbose("no sections for $tag defined");
+        my $tagregex = qr/\Q$tag\E(::.+)?/ms;
+        if( ! $packdb->definedSection( $tagregex ) ) {
+            $self->verbose("no sections for '$tag' defined");
             # set up so that every mode returns the
             # unmodified package name
             $pkg->setPackageNames($name);
         }
         else {
+            $self->verbose("sections for '$tag' is defined");
             my $env=Environment->new();
             # environments inherit from the main package
             foreach my $s ( @sections ) {
@@ -85,7 +87,7 @@ sub getPackage {
                 }
             }
             # add any required packages listed
-            $self->verbose("tag $tag not defined"), if( ! $packdb->definedSection("\Q$tag\E") );
+            $self->verbose("tag $tag not defined"), if( ! $packdb->definedSection(qr/\Q$tag\E/m) );
             for($packdb->list($tag)) {
                 $self->verbose("\nadding dependency $_");
                 if( $_ eq $name ) {
