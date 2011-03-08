@@ -48,19 +48,19 @@ sub test_setup {
     my $info=$self->_setup();
     my @scmd=sort($info->setupCommands());
     my @escmd=sort(
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_build",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_build/usr",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_build/usr/bin",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_build/usr/bin/subbin",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_build/usr/include",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_build/usr/lib",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_install",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_install/test_project",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_install/test_project/usr",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_install/test_project/usr/bin",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_install/test_project/usr/bin/subbin",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_install/test_project/usr/include",
-               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp/mpp_install/test_project/usr/lib");
+               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp_build",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp_build/usr",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp_build/usr/bin",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp_build/usr/bin/subbin",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp_build/usr/include",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp_build/usr/lib",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/mpp_install",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/__mpp/mpp_install/test_project",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/__mpp/mpp_install/test_project/usr",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/__mpp/mpp_install/test_project/usr/bin",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/__mpp/mpp_install/test_project/usr/bin/subbin",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/__mpp/mpp_install/test_project/usr/include",
+               "mkdir -p $self->{tmpdir}/localhost/workspace/__mpp/mpp_install/test_project/usr/lib");
     die("got   \t'@scmd'\nexpecting\t'@escmd'"), if ("@scmd" ne "@escmd" );
 
     my $install=$info->installDir();

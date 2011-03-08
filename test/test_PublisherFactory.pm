@@ -31,14 +31,16 @@ sub tests {
 
 sub test_typeExists {
     my $self=shift;
-    my $pf=PublisherFactory->new($self->{src},{});
+    my $config=INIConfig->new();
+    my $pf=PublisherFactory->new($self->{src},$config);
     die "unable to find type apt", if( ! $pf->typeExists("apt") );
     die "found non existing type", if( $pf->typeExists("Idontexist") );
 }
 
 sub test_typeInstallerExists {
     my $self=shift;
-    my $pf=PublisherFactory->new($self->{src},{});
+    my $config=INIConfig->new();
+    my $pf=PublisherFactory->new($self->{src}, $config);
     die "unable to find type apt", if( ! $pf->typeInstallerExists("apt") );
     die "found non existing type", if( $pf->typeInstallerExists("Idontexist") );
 }
@@ -56,13 +58,8 @@ sub test_getPublisherFail {
         die "expecting getPublisher to die when called with non existing";
     }
     # -- try get a non-existing publisher type
-    eval {
-        $pf->getPublisherType("Idontexist");
-    };
-    if(!$@)
-    {
-        die "expecting getPublisherTyoe to die when called with non existing";
-    }
+    my $type=$pf->getPublisherType("Idontexist");
+    die "expecting getPublisherTyoe to return undef when called with non existing",  if ( defined $type );
     # -- add a publisher of undefined type
     eval {
         $pf->getPublisher("test_pub");
