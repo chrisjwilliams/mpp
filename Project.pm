@@ -370,12 +370,13 @@ sub buildPlatformVariant {
     my $workspace=shift;
     my $log=shift;
 
+    my $name=$variant->name();
     my @variants=$variant->variants();
+    $self->verbose("building variant $name in $workspace");
     # -- if no variants are defined, consider this variant to be a buildable project
     if( $#variants < 0 ) {
-        my $name=$variant->name();
         if( $variant->buildable() ) {
-            $self->verbose("building variant $name in $workspace");
+            $self->verbose("variant $name in $workspace is buildable");
             if( ! defined $self->{built}{$name}{$platform} ) {
                 my $localwork=$self->_localwork($platform);
                 my $packager=$self->_getPackager($workspace, $platform, $variant);

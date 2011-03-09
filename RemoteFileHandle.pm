@@ -58,8 +58,9 @@ sub open {
             $glob->close();
         }
         ${*$glob}{remoteFileHandle_tmpfile}=$glob->_newfilename();
-        #print "attempting to open $self->{remoteFileHandle_tmpfile}\n";;
+        #print "attempting to open ${*$glob}->{remoteFileHandle_tmpfile}\n";;
         return $glob->SUPER::open(">".${*$glob}{remoteFileHandle_tmpfile});
+        if( defined ${*$glob}{remoteFileHandle_perm} ) { chmod ${*$glob}{remoteFileHandle_perm}, ${*$glob}{remoteFileHandle_tmpfile} };
     }
     elsif( $file=~/^<(.*)/ )
     {
@@ -89,6 +90,14 @@ sub close {
         unlink ${*$glob}{remoteFileHandle_tmpfile};
     }
     return $rv;
+}
+
+sub setPermissions {
+    my $glob=shift;
+    ${*$glob}{remoteFileHandle_perm}=shift;
+    if( defined ${*$glob}{remoteFileHandle_tmpfile} ) {
+        chmod ${*$glob}{remoteFileHandle_perm}, ${*$glob}{remoteFileHandle_tmpfile}
+    }
 }
 
 

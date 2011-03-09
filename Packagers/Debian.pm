@@ -211,6 +211,7 @@ sub _control {
     my $postinstfile=$DEB."/postinst";
     if( $#postscript >= 0 ) {
         $fh->open(">".$workDir."/".$postinstfile) or die ( "unable to open file $postinstfile $!\n" );
+        $fh->setPermissions(0755);
         print $fh "#!/bin/bash\n";
         foreach my $line ( @postscript ) {
             print $fh $line,"\n";
@@ -222,6 +223,7 @@ sub _control {
     my $postuninstfile=$DEB."/postrm";
     if( $#unpostscript >= 0 ) {
         $fh->open(">".$workDir."/".$postuninstfile) or die ( "unable to open file $postuninstfile $?\n" );
+        $fh->setPermissions(0755);
         print $fh "#!/bin/bash\n";
         foreach my $line ( @unpostscript ) {
             if( defined $line ) {
@@ -232,7 +234,6 @@ sub _control {
     }
 
 }
-
 
 sub _packageFile {
     my $self=shift;
