@@ -72,16 +72,16 @@ sub new {
     $self->{context}=shift || die( "Must provide an execution context for platform $self->{name}\n" );
     $self->{srcPath}=$self->{api}->path();
 
-    # --- Remote Functions -----------
-    $self->{perl}=$self->{config}->var("commands","perl");
-    if( ! defined $self->{perl} || $self->{perl} eq "" )
-    {
-        $self->{perl}="perl";
+    # --- Remote Commands -----------
+    my $cmdhash = $self->{config}->vars("commands") || {};
+    foreach my $requiredCmds ( qw(perl python) ) {
+        if( ! defined $cmdhash->{$requiredCmds} ) { $cmdhash->{$requiredCmds} = $requiredCmds };
     }
-    if( ! defined $self->{python} || $self->{python} eq "" )
-    {
-        $self->{python}="python";
-    }
+    $self->{perl}=$cmdhash->{perl};
+    $self->{python}=$cmdhash->{python};
+    my $commands=Environment->new( $cmdhash );
+    $commands->namespace("command");
+    
     $self->{chrootcmd}=$self->{config}->var("commands","chroot") || "sudo /usr/sbin/chroot";
     $self->{urlcmd}=$self->{config}->var("commands","fetchURL") || "/usr/bin/wget";
     my $p=$self->{config}->var("commands","remoteModulePath");
@@ -133,6 +133,7 @@ sub new {
                                      platform=>$self->platform(),
                                      type=>$class } );
     $self->{env}->namespace("platform");
+    $self->{env}->add($commands);
 
     return $self;
 }

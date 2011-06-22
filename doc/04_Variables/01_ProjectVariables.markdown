@@ -36,3 +36,5 @@ Variable Name                      | Description
 ${platform::arch}                  | The architecture of the current platform e.g. amd64, i386
 ${platform::type}                  | The type of current platform (mpp specific)
 ${platform::platform}              | The os platform of the current platform e.g. ubuntu_10_10
+${command::perl}                   | The perl executable
+${command::python}                 | The python executable
