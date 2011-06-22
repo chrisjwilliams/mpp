@@ -195,6 +195,17 @@ sub build {
     #return $self->{managers}{build}->status();
 }
 
+sub statusString {
+    my $self=shift;
+    my $string="";
+    foreach my $platform ( $self->platforms() ) {
+        while (my ($stage,$manager) = each %{$self->{managers}}) {
+            $string .= $platform->name().":".$stage.":".($manager->platformStatus($platform))."\n";
+        }
+    }
+    return $string;
+}
+
 sub test {
     my $self=shift;
     my @platforms=@_;

@@ -78,6 +78,10 @@ sub new {
     {
         $self->{perl}="perl";
     }
+    if( ! defined $self->{python} || $self->{python} eq "" )
+    {
+        $self->{python}="python";
+    }
     $self->{chrootcmd}=$self->{config}->var("commands","chroot") || "sudo /usr/sbin/chroot";
     $self->{urlcmd}=$self->{config}->var("commands","fetchURL") || "/usr/bin/wget";
     my $p=$self->{config}->var("commands","remoteModulePath");
