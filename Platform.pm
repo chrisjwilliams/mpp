@@ -535,7 +535,8 @@ sub isPresent {
     elsif( $self->ip() )
     {
         #my $p = Net::Ping->new( "tcp", 5, 64 );
-        my $p = Net::Ping->new( "udp", 12, 64); # proto, timeout, bytes
+        my $p = Net::Ping->new( "tcp", 12, 64); # proto, timeout, bytes
+        $self->verbose("checking ip ".($self->{ip}));
         return $p->ping($self->{ip});
     }
     return 0;

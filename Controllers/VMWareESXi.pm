@@ -29,7 +29,7 @@ sub startPlatform {
     my $platform=shift;
     my $cmds="/bin/vim-cmd ";
     my $id = $self->_getId( $platform );
-    $cmds.="vmsvc/power.on $id";
+    my $oncmd = $cmds."vmsvc/power.on $id";
     $self->{server}->invoke($cmds);
 }
 
@@ -40,6 +40,18 @@ sub stopPlatform {
     my $cmds="/bin/vim-cmd ";
     $cmds.="vmsvc/power.off $id";
     $self->{server}->invoke($cmds);
+}
+
+sub isPresent {
+    my $self=shift;
+    my $platform=shift;
+    my $id = $self->_getId( $platform );
+    my $cmds="/bin/vim-cmd ";
+    $cmds.="vmsvc/power.getstate $id";
+    my $report=$self->{server}->invoke($cmds);
+    my $rv=scalar(grep(/on$/, $report->stdout()));
+    $self->verbose(($report->stdout()));
+    return $rv;
 }
 
 sub _getId {
