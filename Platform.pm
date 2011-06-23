@@ -41,8 +41,6 @@ package Platform;
 use strict;
 use Carp;
 use MppClass;
-use VMWareServer;
-use VMWareESXi;
 use File::Basename;
 use File::Spec;
 use Net::Ping;
@@ -71,6 +69,7 @@ sub new {
     $self->{api}=shift;
     $self->{context}=shift || die( "Must provide an execution context for platform $self->{name}\n" );
     $self->{srcPath}=$self->{api}->path();
+    $self->{lastCheckTime}=0;
 
     # --- Remote Commands -----------
     my $cmdhash = $self->{config}->vars("commands") || {};
@@ -233,7 +232,10 @@ sub shutdown {
         }
     }
     else {
-        if( defined $self->_getServer() )
+        if( $self->_getController() ) {
+            $self->{controller}->stopPlatform( $self );
+        }
+        elsif( defined $self->_getServer() )
         {
             eval {
                 $self->{server}->
@@ -242,9 +244,6 @@ sub shutdown {
             if( $@ ) {
                 print "shutdown failed : $@\n";
             }
-        }
-        elsif( $self->_getController() ) {
-            $self->{controller}->stopPlatform( $self );
         }
     }
 }
@@ -269,11 +268,7 @@ sub startup {
         }
         else {
             # -- vmware server
-            if( $self->_getServer() ) {
-                my $id=$self->{config}->var("vmware", "id");
-                $self->{server}->command("start", $id );
-            }
-            elsif( $self->_getController() ) {
+            if( $self->_getController() ) {
                 $self->verbose("Asking controller to start ".$self->name());
                 eval {
                     $report=$self->{controller}->startPlatform( $self );
@@ -286,6 +281,10 @@ sub startup {
                         $report=$@;
                      }
                 }
+            }
+            elsif( $self->_getServer() ) {
+                my $id=$self->{config}->var("vmware", "id");
+                $self->{server}->command("start", $id );
             }
             elsif( defined $self->{config}->var("network", "mac") )  {
                 # -- wake on lan
@@ -354,24 +353,23 @@ sub _getServer {
     # -- instantiate the vrtualisation server if appropriate
     my $type=$self->{config}->var("vmware", "id");
     if ( defined $type && $type ne "" ) {
-        if( ! defined $self->{server} ) {
-            my $servertype=$self->{config}->var("vmware", "serverType");
-            if( defined $servertype ) {
-                if( $servertype=~/^ESXiSSH/i ) {
-                    require VMWareESXiSSH;
-                    $self->{server}=VMWareESXiSSH->new( $self->{api},
-                        $self->{config}->section("vmware"));
-                }
-                elsif( $servertype=~/^ESX/i ) {
-                    $self->{server}=VMWareESXi->new(
-                        $self->{config}->section("vmware"));
-                }
-            }
-            else {
-                $self->{server}=VMWareServer->new(
-                    $self->{config}->section("vmware"));
-            }
-        }
+    #    if( ! defined $self->{server} ) {
+    #        my $servertype=$self->{config}->var("vmware", "serverType");
+    #        if( defined $servertype ) {
+    #            if( $servertype=~/^ESXiSSH/i ) {
+    #                require VMWareESXiSSH;
+    #                $self->{server}=VMWareESXiSSH->new( $self->{api},
+    #                    $self->{config}->section("vmware"));
+    #            }
+    #            elsif( $servertype=~/^ESX/i ) {
+    #                $self->{server}=VMWareESXi->new(
+    #                    $self->{config}->section("vmware"));
+    #            }
+    #        }
+    #        else {
+    $self->{server}=VMWareServer->new( $self->{config}->section("vmware"));
+    #        }
+    #    }
     }
     return $self->{server};
 }
@@ -528,18 +526,26 @@ sub uninstallPackages {
 
 sub isPresent {
     my $self=shift;
-    if( $self->_getController() )
-    {
-        return $self->_getController()->isPresent($self);
+    my $time = time();
+    if( $time  - $self->{lastCheckTime} > 10  || $self->{lastCheckResult} == 0 ) {
+        if( $self->_getController() )
+        {
+            $self->{lastCheckTime} = $time;
+            $self->{lastCheckResult} = $self->_getController()->isPresent($self);
+        }
+        elsif( $self->ip() )
+        {
+            #my $p = Net::Ping->new( "tcp", 5, 64 );
+            my $p = Net::Ping->new( "tcp", 12, 64); # proto, timeout, bytes
+                $self->verbose("checking ip ".($self->{ip}));
+            $self->{lastCheckTime} = $time;
+            $self->{lastCheckResult} = $p->ping($self->{ip});
+        }
+        else { 
+            $self->{lastCheckResult} = 0;
+        }
     }
-    elsif( $self->ip() )
-    {
-        #my $p = Net::Ping->new( "tcp", 5, 64 );
-        my $p = Net::Ping->new( "tcp", 12, 64); # proto, timeout, bytes
-        $self->verbose("checking ip ".($self->{ip}));
-        return $p->ping($self->{ip});
-    }
-    return 0;
+    return $self->{lastCheckResult};
 }
 
 sub mkdir {
@@ -702,17 +708,19 @@ sub invoke {
     # -- check for controller invocation
     my $controller=$self->_getController();
     if( defined $controller ) {
-        my $report = $controller->executePlatform($self,$self->{user}, $cmd,$log);
+        $report = $controller->executePlatform($self,$self->{user}, $cmd,$log);
         if( defined $log ) {
                 print $log $report->stdout();
                 print $log $report->stderr();
         }
-        return $report;
     }
-
-    # -- use ssh if there is no controller
-    return $self->invokeSSH($cmd,$log);
-}    
+    else {
+        # -- use ssh if there is no controller
+        $report=$self->invokeSSH($cmd,$log);
+    }
+    if( ! $report->returnValue() ) { $self->{lastCheckTime} = time(); }
+    return $report;
+}
 
 sub invokeSSH {
     my $self=shift;
@@ -763,8 +771,8 @@ sub invokeSSH {
            $msg.=$out."\n";
            die $msg;
         }
-        return $report, if( ! defined $log );
-        return $out;
+        return $report; #, if( ! defined $log );
+        #return $out;
     }
     else { die("login or ip not set for ssh") }
 }
