@@ -29,8 +29,8 @@ sub startPlatform {
     my $platform=shift;
     my $cmds="/bin/vim-cmd ";
     my $id = $self->_getId( $platform );
-    my $oncmd = $cmds."vmsvc/power.on $id";
-    $self->{server}->invoke($cmds);
+    $cmds.="vmsvc/power.on $id";
+    return $self->{server}->invoke($cmds);
 }
 
 sub stopPlatform {
@@ -39,7 +39,7 @@ sub stopPlatform {
     my $id = $self->_getId( $platform );
     my $cmds="/bin/vim-cmd ";
     $cmds.="vmsvc/power.off $id";
-    $self->{server}->invoke($cmds);
+    return $self->{server}->invoke($cmds);
 }
 
 sub isPresent {
