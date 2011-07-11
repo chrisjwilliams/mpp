@@ -590,7 +590,7 @@ sub _testPlatform {
     my $platform=shift;
     my $log = shift;
 
-    my $rv=0;
+    my $rv=new Report;
     my $localwork=$self->_localwork($platform);
 
     my $testdir=$self->{workspace}."/mpp_test";
