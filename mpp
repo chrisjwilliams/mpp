@@ -545,6 +545,7 @@ sub help_build
     print "-no_build : skip the make step - just packaging\n\t";
     print "-no_upload : skip the src upload step\n\t";
     print "-no_deps   : skip dependency checking\n\t";
+    print "-no_shutdown : do not shutdown platforms specified with -p before this option\n\t";
     print "-p, -platform platform_name : only build on the specified platform\n";
 }
 
@@ -553,6 +554,7 @@ sub build
     my $self=shift;
     # process build options
     my %opts;
+    my $leave_on={};
     my @platforms=();
     while ( $_[0]=~/^-(.*)/ ) {
         my $arg=$1;
@@ -564,7 +566,14 @@ sub build
             push @platforms, $platform;
         }
         elsif( $arg=~/no_(.+)/ ) {
-            $opts{"$arg"}=1;
+            if( $1 eq "shutdown" ) {
+                foreach my $p ( @platforms ) {
+                    $leave_on->{$p} = 1;
+                }
+            }
+            else {
+               $opts{"$arg"}=1;
+            }
         }
         else {
             print "unknown option : $arg\n";
@@ -581,7 +590,7 @@ sub build
     if( defined $proj )
     {
         my $rv=$proj->build();
-        return $self->_shutdownAndReport($rv, $proj, "build");
+        return $self->_shutdownAndReport($rv, $proj, "build", $leave_on);
     }
     return 1;
 }
@@ -596,11 +605,14 @@ sub help_test
           "virtual machines available\n";
     print "Options:\n\t";
     print "-p, -platform platform_name : only test on the specified platform\n";
+    print "-no_shutdown : do not shutdown platforms specified with -p before this option\n\t";
 }
 
 sub test
 {
     my $self=shift;
+    my %opts;
+    my $leave_on={};
     my @platforms=();
     while ( $_[0]=~/^-(.*)/ ) {
         my $arg=$1;
@@ -610,6 +622,16 @@ sub test
             die "platform not specified", if( ! defined $platform );
             die "platform not valid '$platform'", if( $platform=~/^-/ );
             push @platforms, $platform;
+        }
+        elsif( $arg=~/no_(.+)/ ) {
+            if( $1 eq "shutdown" ) {
+                foreach my $p ( @platforms ) {
+                    $leave_on->{$p} = 1;
+                }
+            }
+            else {
+               $opts{"$arg"}=1;
+            }
         }
         else {
             print "unknown option : $arg\n";
@@ -623,7 +645,7 @@ sub test
     if( defined $proj )
     {
         my $rv=$proj->test();
-        return $self->_shutdownAndReport($rv, $proj, "test");
+        return $self->_shutdownAndReport($rv, $proj, "test", $leave_on);
     }
     return 1;
 }
@@ -720,7 +742,7 @@ sub _shutdownAndReport {
     foreach my $rep ( $report->subReports() ) {
         my $plat=$rep->platform();
         if( defined $plat ) {
-            if( !defined $leave_on->{$plat} || $leave_on->{$plat} != 1 ) {
+            if( !defined $leave_on->{$plat->name()} || $leave_on->{$plat->name()} != 1 ) {
                 print "shutting down ",$plat->name(),"\n";
                 $plat->shutdown();
             }
