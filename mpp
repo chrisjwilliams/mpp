@@ -727,7 +727,7 @@ sub _shutdownAndReport {
     foreach my $rep ( @failed ) {
         my $plat=$rep->platform();
         if( defined $plat ) {
-            $leave_on->{$plat}=1;
+            $leave_on->{$plat->name()}=1;
         }
         print "="x80, "\n";
         print $plat->name(),"\n";
