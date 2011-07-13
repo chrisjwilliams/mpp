@@ -245,15 +245,35 @@ sub _specFileSub {
         print $fh $_,"\n";
     }
     my @seperateSharedDir=$project->extraLibraryDirs();
+    my @prescript=$self->{builder}->preInstallCommands();
     my @postscript=$self->{builder}->postInstallCommands();
+    my @unprescript=$self->{builder}->preUninstallCommands();
     my @unpostscript=$self->{builder}->postUninstallCommands();
     if( $#seperateSharedDir >= 0  ) {
         push @postscript, "-p /sbin/ldconfig";
         push @unpostscript, "-p /sbin/ldconfig";
     }
+    if( @prescript ) {
+        print $fh '%pre',"\n";
+        foreach my $line ( @prescript ) {
+            if( defined $line ) {
+                print $fh $line,"\n";
+            }
+        }
+        print $fh "\n";
+    }
     if( @postscript ) {
         print $fh '%post',"\n";
         foreach my $line ( @postscript ) {
+            if( defined $line ) {
+                print $fh $line,"\n";
+            }
+        }
+        print $fh "\n";
+    }
+    if( @unprescript ) {
+        print $fh '%preun',"\n";
+        foreach my $line ( @unprescript ) {
             if( defined $line ) {
                 print $fh $line,"\n";
             }
