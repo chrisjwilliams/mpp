@@ -128,15 +128,26 @@ sub installCommands {
     return @cmds;
 }
 
+sub preInstallCommands {
+    my $self=shift;
+    return $self->sectionForPlatform("preinstall");
+}
+
 sub postInstallCommands {
     my $self=shift;
     return $self->sectionForPlatform("postinstall");
+}
+
+sub preUninstallCommands {
+    my $self=shift;
+    return $self->sectionForPlatform("preuninstall");
 }
 
 sub postUninstallCommands {
     my $self=shift;
     return $self->sectionForPlatform("postuninstall");
 }
+
 # just the project (not subpackages) install commands
 sub installCommandsProject {
     my $self=shift;

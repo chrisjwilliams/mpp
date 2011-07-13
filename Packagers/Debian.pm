@@ -202,8 +202,26 @@ sub _control {
 
     # postinstall and uninstall files
     my @seperateSharedDir=$project->extraLibraryDirs();
+    my @prescript=$self->{builder}->preInstallCommands();
     my @postscript=$self->{builder}->postInstallCommands();
+    my @unprescript=$self->{builder}->preUninstallCommands();
     my @unpostscript=$self->{builder}->postUninstallCommands();
+
+    # pre-install file
+    my $preinstfile=$DEB."/preinst";
+    if( $#prescript >= 0 ) {
+        $fh->open(">".$workDir."/".$preinstfile) or die ( "unable to open file $preinstfile $?\n" );
+        $fh->setPermissions(0755);
+        print $fh "#!/bin/bash\nset -e\n";
+        foreach my $line ( @prescript ) {
+            if( defined $line ) {
+                print $fh $line,"\n";
+            }
+        }
+        $fh->close();
+    }
+
+    # post-install file
     if( $#seperateSharedDir >= 0  ) {
         push @postscript, "/sbin/ldconfig";
         push @unpostscript, "/sbin/ldconfig";
@@ -212,9 +230,23 @@ sub _control {
     if( $#postscript >= 0 ) {
         $fh->open(">".$workDir."/".$postinstfile) or die ( "unable to open file $postinstfile $!\n" );
         $fh->setPermissions(0755);
-        print $fh "#!/bin/bash\n";
+        print $fh "#!/bin/bash\nset -e\n";
         foreach my $line ( @postscript ) {
             print $fh $line,"\n";
+        }
+        $fh->close();
+    }
+
+    # preuninstall file
+    my $preuninstfile=$DEB."/prerm";
+    if( $#unprescript >= 0 ) {
+        $fh->open(">".$workDir."/".$preuninstfile) or die ( "unable to open file $preuninstfile $?\n" );
+        $fh->setPermissions(0755);
+        print $fh "#!/bin/bash\nset -e\n";
+        foreach my $line ( @unprescript ) {
+            if( defined $line ) {
+                print $fh $line,"\n";
+            }
         }
         $fh->close();
     }
@@ -224,7 +256,7 @@ sub _control {
     if( $#unpostscript >= 0 ) {
         $fh->open(">".$workDir."/".$postuninstfile) or die ( "unable to open file $postuninstfile $?\n" );
         $fh->setPermissions(0755);
-        print $fh "#!/bin/bash\n";
+        print $fh "#!/bin/bash\nset -e\n";
         foreach my $line ( @unpostscript ) {
             if( defined $line ) {
                 print $fh $line,"\n";
