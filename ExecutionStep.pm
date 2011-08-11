@@ -47,7 +47,7 @@ sub depends {
     foreach my $step ( @_ )
     {
         if( defined $step ) {
-            push @{$self->{depends}}, $step;
+            push @{$self->{deps}}, $step;
         }
     }
 }
@@ -106,7 +106,7 @@ sub executePlatform {
     # -- check dependencies have been run
     foreach my $dep ( @{$self->{deps}} ) {
        my $depStatus = $dep->platformStatus($platform);
-       if ( ! defined $depStatus || $depStatus != "completed" ) {
+       if ( ! defined $depStatus || $depStatus ne "completed" ) {
             $rv = $dep->executePlatform($platform);
             if( $rv->returnValue() != 0 ) {
                 $self->_errors( $log, $platform, "error executing dependency \"".($dep->name())."\"" );
