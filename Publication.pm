@@ -27,6 +27,7 @@ sub new {
     $self->{api}=shift;
     $self->fatal("no name specified"), if( ! defined $config->var("publication","name"));
     #$self->{infoserver}=Server->new($config);
+    $self->{verbose}=1;
     return $self;
 }
 
@@ -89,6 +90,7 @@ sub publish {
 
     # -- ensure all dependencies are available inside this publication
     foreach my $platform ( @platforms ) {
+        $self->verbose("publishing ".($project->name())." on platform ".($platform->name()) );
         foreach my $package ( $project->dependencies() ) {
             if( ! $self->isPublished($package, $platform, $release) ) {
                 my $depProject=$package->getProject($package);

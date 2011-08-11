@@ -47,5 +47,5 @@ sub workDir {
 
 sub locations {
    my $self=shift;
-   return new Environment;
+   return {};
 }
