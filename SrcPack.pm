@@ -93,7 +93,8 @@ sub type {
             $self->{type}="tbz";
         }
         else {
-            ($self->{type}=$self->{srcpack})=~s/.+?\.(.*)$/$1/;
+            my $pack=basename($self->{srcpack});
+            ($self->{type}=$pack)=~s/.+?\.(.*)$/$1/;
         }
     }
     return $self->{type};
@@ -121,16 +122,16 @@ sub _unpack {
     if( $suffix =~ /zip/i ) {
         $cmd="unzip";
     }
-    elsif( $suffix =~ /tar/i )
-    {
-        $cmd="tar -xf";
-    }
-    elsif( $file =~ /tar.gz$/i || $suffix=~/tgz/i )
+    elsif( $file =~ /tar\.gz$/i || $suffix=~/tgz$/i )
     {
         $cmd="tar -xzf";
     }
-    elsif( $file =~ /tar.bz2$/i || $suffix=~/tbz/i ) {
+    elsif( $file =~ /tar\.bz2$/i || $suffix=~/tbz$/i ) {
         $cmd="tar -xjf";
+    }
+    elsif( $suffix =~ /tar$/i )
+    {
+        $cmd="tar -xf";
     }
     if( $cmd ne "" ) {
         print "unpacking file with $cmd in $workspace\n";
@@ -156,16 +157,16 @@ sub _repack {
     if( $type =~ /zip/i ) {
         $cmd="zip";
     }
-    elsif( $type =~ /tar/i )
-    {
-        $cmd="tar -cf";
-    }
-    elsif( $type =~ /tar.gz$/i || $type=~/tgz/i )
+    elsif( $type =~ /tar.gz$/i || $type=~/tgz$/i )
     {
         $cmd="tar -czf";
     }
-    elsif( $type =~ /tar.bz2$/i || $type=~/tbz/i ) {
+    elsif( $type =~ /tar.bz2$/i || $type=~/tbz$/i ) {
         $cmd="tar -cjf";
+    }
+    elsif( $type =~ /tar$/i )
+    {
+        $cmd="tar -cf";
     }
     if( $cmd ne "" ) {
         print "packing file with $cmd $file $dir\n";
