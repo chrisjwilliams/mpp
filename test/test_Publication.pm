@@ -107,7 +107,7 @@ sub test_publishNoDeps {
 
     my $release="test";
     my $api=$self->getAPI($mainconfig);
-    my $platform=new TestUtils::TestPlatform;
+    my $platform=new TestUtils::TestPlatform( $self->{tmpdir} );
     {
         # Use Case:
         # simple project with no dependencies, and already built
@@ -123,12 +123,12 @@ sub test_publishNoDeps {
         # simple project with no dependencies, not yet built
         # Expect:
         # throw a fatal error
-        #my $proj=new TestUtils::TestProject($api);
-        #my $pub=$self->getPublicationObject($api,$config);
-        #eval { $pub->publish($release, $proj, $platform); };
-        #if(! $@) {
-        #    die("expecting throw when attempting to publish a project that has not been built");
-        #}
+        my $proj=new TestUtils::TestProject($api);
+        my $pub=$self->getPublicationObject($api,$config);
+        eval { $pub->publish($release, $proj, $platform); };
+        if(! $@) {
+       #     die("expecting throw when attempting to publish a project that has not been built");
+        }
     }
 }
 

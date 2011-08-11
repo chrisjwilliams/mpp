@@ -184,7 +184,7 @@ sub getPlatformPublishers {
     my @types=$platform->packageManagerType();
     for(@types) {
         $self->verbose("looking for client type $_");
-        die "unable to determine publisher for package manager '".$_."'", if( ! $self->typeInstallerExists( $_ ));
+        die "unable to determine publisher for package manager '".$_."' : must bo one of ".(join( ",",$self->installerTypes())), if( ! $self->typeInstallerExists( $_ ));
         my $inst=$self->getPackageInstaller($_, $platform);
         my @repTypes=$inst->repositoryTypes();
         for ( @repTypes ) {

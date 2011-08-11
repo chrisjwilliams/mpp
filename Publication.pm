@@ -35,11 +35,6 @@ sub name {
     return $self->{config}->var("publication","name");
 }
 
-sub addRepositories {
-    my $self=shift;
-    push @{$self->{repos}}, @_;
-}
-
 #sub releaseLevels {
 #    my $self=shift;
 #    return @($self->{releases});
@@ -56,7 +51,25 @@ sub platforms {
 
 sub repositories {
     my $self=shift;
-    return @{$self->{repos}};
+    return $self->{config}->list("repositories");
+    #return @{$self->{repos}};
+}
+
+sub getPlatformRepositories {
+    my $self=shift;
+    my $platform=shift;
+
+    my @repos;
+    my $pf=$self->{api}->getPublisherFactory();
+    my @candidates=$pf->getPlatformPublishers($platform);
+    foreach my $candidate ( @candidates ) {
+        foreach my $nm ( $self->repositories() ) {
+            if ( $candidate->name() eq $nm ) {
+                push @repos, $candidate;
+            }
+        }
+    }
+    return @repos;
 }
 
 sub getRepository {
@@ -85,7 +98,8 @@ sub publish {
             }
         }
         # -- now publish the package
-        $project->_publishPlatform($platform,$release);
+        my @repos=$self->getPlatformRepositories($platform);
+        $project->publishPlatform($platform, $release, @repos );
     }
 }
 
