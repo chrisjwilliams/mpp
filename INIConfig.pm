@@ -11,7 +11,7 @@
 # Interface
 # ---------
 # new(): new object
-# clone(INIConfig) : return a new object identical to this one.
+# clone(section_reg_exp) : return a new object identical to this one, or containing only the sections matching the reg exp.
 # merge(INIConfig) : merge the values of the given INIConfig into this object
 # mergeSection( section_name, INIConfig) : merge the specified section form the given INICon
 # sections([regex]) : return a list of defined sections
@@ -65,8 +65,33 @@ sub save {
 
 sub clone {
     my $self=shift;
+    my $pat=shift;
     my $clone=new INIConfig();
-    $clone->merge($self);
+    if( ! defined $pat ) {
+        $clone->merge($self);
+    }
+    else {
+        foreach my $section ( $self->sections($pat) ) {
+             $clone->mergeSection($section,$self);
+        }
+    }
+    return $clone;
+}
+
+#
+# crate a new INIConfig object with all sections that match
+# the first pattern, as sections that are reduced by the second 
+# pattern.
+#
+sub breakout {
+    my $self=shift;
+    my $pat=shift;
+    my $reducer=shift;
+    my $clone=new INIConfig();
+    foreach my $section ( $self->sections($pat) ) {
+         (my $reduced=$section)=~s/$reducer//;
+         $clone->mergeSection($reduced,$self, $section);
+    }
     return $clone;
 }
 
