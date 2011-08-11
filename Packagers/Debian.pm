@@ -136,7 +136,7 @@ sub _prepareDir {
     my $proj=shift;
 
     my $workDir=$self->{workdir};
-    my $name=$proj->name();
+    my $name=$proj->name($self->{platform});
     #my $deb="debian_$name";
     my $deb=$self->{builder}->dir($name);
     my $DEB=$deb."/DEBIAN";
@@ -167,7 +167,7 @@ sub _control {
     my $workDir=$self->{workdir};
 
     # -- create the debian control file
-    my $projname=$project->name();
+    my $projname=$self->SUPER::projectName(); #$project->name($self->{platform});
     $projname=~s/_/-/g;
     my $version=$project->version();
     my $depends=PackageInfo::standardNames("runtime",$project->dependencies()->platformDependencies($self->{platform},"runtime"));
@@ -270,6 +270,6 @@ sub _control {
 sub _packageFile {
     my $self=shift;
     my $proj=shift;
-    my $packageName=($proj->name())."-".($proj->version()).".deb";
+    my $packageName=($proj->name($self->{platform}))."-".($proj->version()).".deb";
     return $packageName;
 }

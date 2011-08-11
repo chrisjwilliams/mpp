@@ -23,6 +23,7 @@ sub new {
     my $context=shift;
     my $dir=shift;
     $self->{project}=shift;
+    $self->{api}=shift;
     bless $self, $class;
     return $self;
 }
@@ -33,5 +34,15 @@ sub executeStep {
     my $log =shift;
 
     croak "no platform defined", if ( ! defined $platform );
+    # -- ensure we build any custom dependencies
+    my $deps = $self->{project}->{project}->dependencies()->customBuildPackages($platform);
+    foreach my $dep ( keys %{$deps} ) {
+        my $depProject=$self->{api}->getProjectManager()->getProject($dep, $deps->{$dep});
+        if( $depProject->statusPlatform("build", $platform) ne "built" ) {
+            $depProject->buildPlatform($platform, $log);
+            $depProject->_publishPlatform($platform, "mpp_test" );
+        }
+    }
+    # -- now build the actual project
     return $self->{project}->buildPlatform($platform, $log);
 }

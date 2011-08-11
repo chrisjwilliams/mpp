@@ -62,7 +62,7 @@ sub new {
     $self->{context}->setWorkDir( $self->{work} );
 
     # setup the execution steps
-    $self->{managers}{build} = new BuildStep("build", $self->{context},$self->{work}, $self );
+    $self->{managers}{build} = new BuildStep("build", $self->{context},$self->{work}, $self, $self->{api} );
     $self->{managers}{test} = new TestStep("test", $self->{context},$self->{work} , $self);
     $self->{managers}{test}->depends($self->{managers}{build});
 
@@ -77,7 +77,7 @@ sub executionSteps {
 
 sub name {
     my $self=shift;
-    return $self->{project}->name();
+    return $self->{project}->name(@_);
 }
 
 sub version {
@@ -187,12 +187,20 @@ sub build {
     {
         @platforms=$self->platforms();
     }
+    # -- build custom dependencies
     my $report;
     if( $self->{project}->type() eq "build" ) {
         $report = $self->{managers}{build}->execute( @platforms );
     }
     return $report;
     #return $self->{managers}{build}->status();
+}
+
+sub statusPlatform { 
+    my $self=shift;
+    my $type=shift;
+    my $platform=shift;
+    return $self->{managers}{$type}->platformStatus($platform);
 }
 
 sub statusString {
@@ -225,7 +233,7 @@ sub buildPlatform {
     my $rv=0;
 
     croak "no platform defined", if ( ! defined $platform );
-    print "Project Building on platform :".$platform->name(),(defined $platform->ip())?" ( ".($platform->ip())." )":"" ,"\n";
+    print "Project ", $self->name($platform), " Building on platform :".$platform->name(),(defined $platform->ip())?" ( ".($platform->ip())." )":"" ,"\n";
     my $localwork=$self->_localwork($platform);
     my $packager=$self->_getPackager($workspace, $platform, $self->{project});
 
@@ -381,7 +389,7 @@ sub buildPlatformVariant {
     my $workspace=shift;
     my $log=shift;
 
-    my $name=$variant->name();
+    my $name=$variant->name($platform);
     my @variants=$variant->variants();
     $self->verbose("building variant $name in $workspace");
     # -- if no variants are defined, consider this variant to be a buildable project
@@ -653,7 +661,7 @@ sub _getPackages {
                 print "No package '$_' available for platform : ", $platform->name(),"\n";
             }
         }
-        my $pkg=Package::Package->new( { name=>$self->name(),
+        my $pkg=Package::Package->new( { name=>$self->name($platform),
                                          version=>$self->version(),
                                          platform=>$platform->platform(),
                                          arch=>$platform->arch()
@@ -788,7 +796,7 @@ sub _getPackager
     my $platform=shift;
     my $info=shift;
 
-    my $name=$info->name();
+    my $name=$info->name($platform);
     if ( ! defined $self->{packager}{$platform}{$name} )
     {
         my $type=$platform->packageType();

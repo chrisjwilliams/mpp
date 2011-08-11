@@ -44,6 +44,35 @@ sub platformDependencies {
 #    return @rv;
 }
 
+#
+#  returns a hash of custom-build packages that are required
+#  (packageName => version )
+#
+sub customBuildPackages {
+    my $self=shift;
+    my $platform=shift;
+
+    my @keys=( "dependencies::custom",
+               "dependencies::custom::".$platform->name(),
+               "dependencies::custom::".$platform->platform() );
+    my $deps={};
+    foreach my $key ( @keys ) {
+        # -- custom packages must have a version
+        foreach my $p ( $self->{config}->list($key) ) {
+            die("entries in a dependencies::custom list must specify a version");
+        }
+        $deps=$self->_dependencies($key, $deps);
+    }
+    # remove any anulled with -
+    foreach my $key ( keys %$deps ) {
+        if( $key=~/^\-(.+)/ ) {
+            delete $deps->{$1};
+            delete $deps->{$key};
+        }
+    }
+    return $deps;
+}
+
 sub platformPackages {
     my $self=shift;
     my $platform=shift;

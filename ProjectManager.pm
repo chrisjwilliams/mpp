@@ -107,7 +107,6 @@ sub saveProjectConfig {
     $project->{config}->saveToFile($file);
 }
 
-
 sub newProject {
     my $self=shift;
     my $name=shift;

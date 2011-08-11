@@ -17,7 +17,7 @@ use strict;
 sub new {
     my $class=shift;
     my $self={};
-    $self->{packageFactory}=shift;
+    $self->{api}=shift;
     $self->{name}=shift;
     $self->{config}=shift;
     bless $self, $class;
@@ -62,4 +62,9 @@ sub platformPackage {
     # merge in default configuration
     $pkg->merge($self->{config});
     return $pkg;
+}
+
+sub getProject {
+    my $self=shift;
+    return $self->{api}->getProjectManager()->( $self->{name}, $self->{version} );
 }

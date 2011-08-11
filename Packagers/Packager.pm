@@ -55,7 +55,7 @@ sub projectName {
     my $self=shift;
     my $pName=$self->buildInfo("packageName");
     if( ! defined $pName ) {
-        $pName=$self->{project}->name();
+        $pName=$self->{project}->name($self->{platform});
     }
     return $pName;
 }

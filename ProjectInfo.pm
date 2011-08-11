@@ -150,7 +150,19 @@ sub setEnv {
 
 sub name {
     my $self=shift;
-    return $self->{name};
+    my $platform=shift;
+    if( defined $platform ) {
+        my @keys=( "project", "project::".$platform->name(),
+                   "project::".$platform->platform()
+                 );
+        foreach my $key ( reverse @keys ) {
+            my $nm = $self->{config}->var($key,"name");
+                return $nm, if( defined $nm && $nm ne "" );
+            }
+    }
+    else {
+        return $self->{name};
+    }
 }
 
 sub projectDir {
