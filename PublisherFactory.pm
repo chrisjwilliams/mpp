@@ -95,7 +95,11 @@ sub getPublisher {
     my $name=shift;
 
     if( ! defined $self->{pubs}{$name} ) {
-        my $section=$self->{config}->section("publisher::$name");
+        my $section=$self->{config}->section("repository::$name");
+        if( ! defined $section || $section eq "" ) {
+            $section=$self->{config}->section("publisher::$name");
+    #        print "deprecation warning: [publisher::]. Use [repository::]","\n";
+        }
         $section->{verbose}=$self->{config}->var("verbose","Publisher");
         my $type=$section->{"type"};
         $section->{name}=$name, if ( ! defined $section->{name} );
