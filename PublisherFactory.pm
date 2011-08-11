@@ -95,17 +95,12 @@ sub getPublisher {
     my $name=shift;
 
     if( ! defined $self->{pubs}{$name} ) {
-        my $section=$self->{config}->section("repository::$name");
-        if( ! defined $section || $section eq "" ) {
-            $section=$self->{config}->section("publisher::$name");
-    #        print "deprecation warning: [publisher::]. Use [repository::]","\n";
-        }
-        $section->{verbose}=$self->{config}->var("verbose","Publisher");
-        my $type=$section->{"type"};
-        $section->{name}=$name, if ( ! defined $section->{name} );
-        die "undefined type for publisher '$name'", if (! defined $type || $type eq "" );
-        die ("unknown publisher type $type\n"), if( !$self->typeExists( $type ) );
-        $self->{pubs}{$name}=$self->{pi}->newPlugin("Publishers::".$self->{types}{$type}, $section);
+        #$section->{verbose}=$self->{config}->var("verbose","Publisher");
+        my $rconfig=$self->_getRepositoryConfig($name);
+        my $type=$rconfig->var("repository","type");
+        die "undefined type for repository '$name'", if (! defined $type || $type eq "" );
+        die ("unknown publisher type $type: must be one of ".(join(",",$self->types()))."\n"), if( !$self->typeExists( $type ) );
+        $self->{pubs}{$name}=$self->{pi}->newPlugin("Publishers::".$self->{types}{$type}, $rconfig);
     }
     return $self->{pubs}{$name};
 }
@@ -114,7 +109,7 @@ sub publishers {
     my $self=shift;
     my @pubs=();
     foreach my $section ( $self->{config}->sections() ) {
-        next, if $section!~/^publisher::(.+)/;
+        next, if $section!~/^repository::(.+)/;
         push @pubs, $1;
     }
     return @pubs;
@@ -165,7 +160,7 @@ sub getPublisherType {
     # -- look through our defined publishers for one of the specified type
     foreach my $pub ( $self->publishers() )
     {
-        my $key="publisher::$pub";
+        my $key="repository::$pub";
         if($self->{config}->var($key, "type") eq $type ) {
            $name=$pub; 
            last, if( defined $self->{config}->var($key,"default") );
@@ -204,6 +199,26 @@ sub getPlatformPublishers {
         }
     }
     return @publishers;
+}
+
+sub _getRepositoryConfig {
+    my $self=shift;
+    my $name=shift;
+
+    if( ! defined $self->{repoConfig}{$name} ) {
+        # -- search local config for named repositories
+        my $key="repository::$name";
+        my $section=$self->{config}->section($key);
+        if( ! defined $section || $section eq "" ) {
+            die "cannot find configuration for repository '$name'";
+        }
+        $self->{repoConfig}{$name} = $self->{config}->breakout($key, "\:\:$name");
+        # -- set the name if its not already defined
+        if ( ! defined $self->{repoConfig}{$name}->var("repository","name") ) {
+            $self->{repoConfig}{$name}->setVar("repository","name", $name), 
+        }
+    }
+    return $self->{repoConfig}{$name};
 }
 # -- private methods -------------------------
 

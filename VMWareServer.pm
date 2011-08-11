@@ -26,9 +26,9 @@ sub new {
     my $class=shift;
 
     my $self={};
-        $self->{config} = shift;
-        if( ! defined $self->{config}{server} )
-        {
+    $self->{config} = shift;
+    if( ! defined $self->{config}{server} )
+    {
         $self->{config}{server}="https://localhost:8333/sdk";
     }
     bless $self, $class;

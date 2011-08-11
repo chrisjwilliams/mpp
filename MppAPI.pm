@@ -62,6 +62,9 @@ sub new {
     if( scalar $self->{config}->list("projectLocation") < 0 ) {
         die( "[projectLocation] has not been defined anywhere" );
     }
+    if( scalar $self->{config}->list("publicationLocation") < 0 ) {
+        die( "[publicationLocation] has not been defined anywhere" );
+    }
     if( ! defined $workdir ) {
         die( "workDir has not been defined in \"[mpp]\"" );
     }

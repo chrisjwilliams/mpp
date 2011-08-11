@@ -21,15 +21,16 @@ use FileHandle;
 use DirHandle;
 use Carp;
 use strict;
+use Publishers::Base;
+our @ISA=qw /Publishers::Base/;
 1;
 
 # -- initialisation
 
 sub new {
     my $class=shift;
-    my $self={};
+    my $self = $class->SUPER::new(@_);
     bless $self, $class;
-    $self->{config}=shift;
     return $self;
 }
 

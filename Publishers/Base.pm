@@ -24,7 +24,7 @@ sub new {
     my $name=$config->{name} || "unnanmed";
     my $self={};
     bless $self, $class;
-    $self->{config}=$config;
+    $self->{config}=$config->section("repository");
     $self->{root}=$self->{config}{root};
     die "illegal root '".($self->{root})."'", if( $self->{root}=~/\.\./ );
     $self->{verbose}=$self->{config}{verbose};

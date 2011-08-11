@@ -21,22 +21,33 @@ sub new {
     my $self={};
     $self->{testConfigDir}=shift;
     $self->{tmpDir}=shift;
+    $self->{config}=shift;
     $self->{src}=$FindBin::Bin."/..";
     $self->{prjloc}=$self->{testConfigDir}."/Projects";
     $self->{platformbase}=$self->{testConfigDir}."/Platforms";
     $self->{softwareloc}=$self->{testConfigDir}."/Software";
-    my $testconfig=$self->{testConfigDir}."/config.ini";
-    if( -f $testconfig ) {
-        $self->{config}=INIConfig->new($self->{testConfigDir}."/config.ini");
+    $self->{repositoryLoc}=$self->{testConfigDir}."/Publications";
+    if( ! defined $self->{config} ) {
+        my $testconfig=$self->{testConfigDir}."/config.ini";
+        if( -f $testconfig ) {
+            $self->{config}=INIConfig->new($self->{testConfigDir}."/config.ini");
+        }
+        else {
+            $self->{config}=INIConfig->new();
+        }
     }
-    else {
-        $self->{config}=INIConfig->new();
+    if( ! defined $self->{config}->var("mpp","baseDir") ) {
+        $self->{config}->setVar("mpp","baseDir", $self->{testConfigDir});
     }
-    $self->{config}->setVar("publisher::mpp_test", "root", $self->{tmpDir}."/simplePub" );
-    $self->{config}->setVar("publisher::mpp_test", "type", "simple" );
-    if( ! defined $self->{config}->var("mpp","softwareDir") ) {
-        $self->{config}->setVar("mpp","softwareDir",$self->{softwareloc});
+    if( ! defined $self->{config}->var("mpp","workDir") ) {
+        $self->{config}->setVar("mpp","workDir", $self->{tmpDir});
     }
+    $class->SUPER::new($self->{src}, $self->{config});
+    #$self->{config}->setVar("publisher::mpp_test", "root", $self->{tmpDir}."/simplePub" );
+    #$self->{config}->setVar("publisher::mpp_test", "type", "simple" );
+    #if( ! defined $self->{config}->var("mpp","softwareDir") ) {
+    #    $self->{config}->setVar("mpp","softwareDir",$self->{softwareloc});
+    #}
    
     bless $self, $class;
     return $self;

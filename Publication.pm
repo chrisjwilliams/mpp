@@ -9,7 +9,6 @@
 # createInstallPackages() : creates a collection of install packages for each repository
 #-----------------------------------
 
-
 package Publication;
 use strict;
 use MppClass;
@@ -24,65 +23,108 @@ sub new {
     my $class=shift;
     my $config=shift;
     my $self=$class->SUPER::new($config);
-    $self->{api}=shift;
-    $self->{infoserver}=Server->new($config);
     bless $self, $class;
+    $self->{api}=shift;
+    $self->fatal("no name specified"), if( ! defined $config->var("publication","name"));
+    #$self->{infoserver}=Server->new($config);
     return $self;
 }
 
 sub name {
     my $self=shift;
-    return $self->{config}{name};
+    return $self->{config}->var("publication","name");
 }
 
-sub addPublishers {
+sub addRepositories {
     my $self=shift;
-    push @{$self->{publishers}}, @_;
+    push @{$self->{repos}}, @_;
 }
 
-sub releaseLevels {
-    my $self=shift;
-    return @($self->{releases});
-}
+#sub releaseLevels {
+#    my $self=shift;
+#    return @($self->{releases});
+#}
 
-sub publicReleaseLevels {
-    my $self=shift;
-    return @($self->{releases});
-}
+#sub publicReleaseLevels {
+#    my $self=shift;
+#    return @($self->{releases});
+#}
 
 sub platforms {
     my $self=shift;
 }
 
-sub publishers {
+sub repositories {
     my $self=shift;
-    return @{$self->{publishers}};
+    return @{$self->{repos}};
+}
+
+sub getRepository {
+    my $self=shift;
+    my $name=shift;
+    my $pf=$self->{api}->getPublisherFactory();
+    return $pf->getPublisher( $name );
 }
 
 sub publish {
     my $self=shift;
     my $release=shift;
     my $project=shift;
-    my @platforms=@_ || $project->platforms();
+    my @platforms=@_;
 
-    for(@platforms) {
-        $project->_publishPlatform($_);
+    if( $#platforms < 0 ) { @platforms=$project->platforms() };
+
+    # -- ensure all dependencies are available inside this publication
+    foreach my $platform ( @platforms ) {
+        foreach my $package ( $project->dependencies() ) {
+            if( ! $self->isPublished($package, $platform, $release) ) {
+                my $depProject=$package->getProject($package);
+                if( $depProject ) {
+                    $self->publish($release, $depProject, $release);
+                }
+            }
+        }
+        # -- now publish the package
+        $project->_publishPlatform($platform,$release);
     }
+}
+
+#
+#  returns true if available, 0 if not
+#
+sub isPublished {
+    my $self=shift;
+    my $package=shift;
+    my $platform=shift;
+    my $release=shift;
+
+
+    # -- check availability on host platform
+    return 1, if( $platform->hasPackage( $package ) );
+
+    # -- check if we have an mpp build available
+    my $repo;
+    if( $repo=$self->getRepository($platform, $release) ) {
+        return $repo->isPublished($package);
+    }
+
+    return 0;
 }
 
 sub createInstallPackages {
     my $self=shift;
+    die("createInstallPackages: not yet implemented");
 
-    foreach my $publisher ( $self->publishers() ) {
-        my $inicfg=INIConfig->new();
-        $inicfg->setVar("project","name", $publisher->name());
-        $inicfg->setVar("project","version", 0.0);
-        $inicfg->setList("install",@repofiles);
-        my $info=new ProjectInfo( $inicfg );
-        my $project=new Project->($self->{api}, $info);
-        $project->build();
-        $project->packages($publisher->arch());
-    }
+#    foreach my $publisher ( $self->publishers() ) {
+#        my $inicfg=INIConfig->new();
+#        $inicfg->setVar("project","name", $publisher->name());
+#        $inicfg->setVar("project","version", 0.0);
+#        $inicfg->setList("install",@repofiles);
+#        my $info=new ProjectInfo( $inicfg );
+#        my $project=new Project->($self->{api}, $info);
+#        $project->build();
+#        $project->packages($publisher->arch());
+#    }
 }
 
 sub installPackage {
@@ -112,7 +154,7 @@ sub createPublicationInfoHtml {
         print $fh "<li>",(pop @releases),"</li>";
         print $fh "</ul>";
         print $fh "Other Release Levels";
-        foreach $release ( @releases ) {
+        foreach my $release ( @releases ) {
             print $fh "<li>$release</li>";
             my $rdir=$name."/".$release;
             $serv->createDir($rdir);
@@ -124,7 +166,7 @@ sub createPublicationInfoHtml {
                 print $pindex "<li>$platform</li>";
                 my $pfh=$serv->fileHandle();
                 $self->_header($pfh);
-                $pfh->open($pdir."/$platform.html");
+                $pfh->open($rdir."/$platform.html");
                 $self->_platformHTML($pfh,$platform,$release);
                 $pfh->close();
             }
