@@ -1,7 +1,11 @@
-## Welcome to MPP the Multi-Platform Packager ##
+## Welcome to MPP the Multi-Platform Publisher ##
+
+Contents
+========
 
 This aim of this book is to enable the reader to successfully set up
-and use a full packaging environment. 
+and use the mpp tool to pacakge and publish their project using the mpp 
+tool. 
 
 It is split into three main parts:
 
