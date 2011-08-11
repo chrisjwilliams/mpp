@@ -12,6 +12,7 @@
 
 package MppClass;
 use strict;
+use Carp;
 1;
 
 sub new {
@@ -31,6 +32,12 @@ sub new {
     }
     $self->{verbosePrefix}=ref($self).": ";
     return $self;
+}
+
+sub fatal {
+    my $self=shift;
+    my $msg=shift;
+    croak(ref($self).":".$msg."\n");
 }
 
 sub setVerbose {
