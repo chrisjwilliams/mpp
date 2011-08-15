@@ -643,7 +643,7 @@ sub _testPlatform {
     return $rv;
 }
 
-sub _getPackages { 
+sub getPackages { 
     my $self=shift;
     my $platform=shift;
 
@@ -682,7 +682,7 @@ sub unpublishPlatform {
     my @publishers=@_;
 
     # -- send to the publisher
-    my @packs=$self->_getPackages($platform);
+    my @packs=$self->getPackages($platform);
     if( $#packs >= 0 ) {
         foreach my $publisher ( @publishers ) {
             my @ppacks=@packs;
@@ -707,7 +707,8 @@ sub publishPlatform {
     my @publishers=@_;
 
     # -- send to the publisher
-    my @packs=$self->_getPackages($platform);
+    my $report=new Report;
+    my @packs=$self->getPackages($platform);
     if( $#packs >= 0 ) {
         foreach my $publisher ( @publishers ) {
             my @ppacks=@packs;
@@ -735,7 +736,10 @@ sub publishPlatform {
     }
     else {
         warn("no packages defined");
+        $report->addStderr("no packages defined");
+        $report->setReturnValue(1);
     }
+    return $report;
 }
 
 sub _publishPlatform {

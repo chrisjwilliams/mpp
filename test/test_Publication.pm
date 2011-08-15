@@ -113,9 +113,10 @@ sub test_publishNoDeps {
         # simple project with no dependencies, and already built
         # Expect:
         # repository to be called with package
-        my $proj=new TestUtils::BuiltTestProject($api);
+        my $proj=new TestUtils::BuiltTestProject($api, $self->{tmpdir}, $self->{testConfigDir});
         my $pub=$self->getPublicationObject($api,$config);
-        $pub->publish($release, $proj, $platform);
+        my $report=$pub->publish($release, $proj, $platform);
+        die("Expecting it to publish OK"), if($report->failed());
     }
 
     {
@@ -123,7 +124,8 @@ sub test_publishNoDeps {
         # simple project with no dependencies, not yet built
         # Expect:
         # throw a fatal error
-        my $proj=new TestUtils::TestProject($api);
+        my $proj=new TestUtils::TestProject($api, $self->{tmpdir}, 
+                                            $self->{testConfigDir} );
         my $pub=$self->getPublicationObject($api,$config);
         eval { $pub->publish($release, $proj, $platform); };
         if(! $@) {

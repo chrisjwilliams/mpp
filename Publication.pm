@@ -17,6 +17,7 @@ use FileHandle;
 use Server;
 use RemoteFileHandle;
 use File::Copy;
+use Report;
 1;
 
 sub new {
@@ -80,6 +81,37 @@ sub getRepository {
     return $pf->getPublisher( $name );
 }
 
+sub unpublish {
+    my $self=shift;
+    my $release=shift;
+    my $project=shift;
+    my @platforms=@_;
+
+    if( $#platforms < 0 ) { @platforms=$project->platforms() };
+
+    my $report=new Report;
+    foreach my $platform ( @platforms ) {
+        my @repos=$self->getPlatformRepositories($platform);
+        my @packs=$project->getPackages($platform);
+        if( $#packs >= 0 ) {
+            foreach my $repo( @repos ) {
+                my @ppacks=@packs;
+                #my @ppacks;
+                #for(@packs) {
+                #    if( grep( $_->type() , $publisher->packageTypes()) ) {
+                #        push @ppacks, $_;
+                #    }
+                #}
+                if( $#ppacks>=0) {
+                    $self->verbose("removing @ppacks from :'".($repo->name())."'");
+                    $repo->remove( $release, @ppacks );
+                }
+            }
+        }
+    }
+    return $report;
+}
+
 sub publish {
     my $self=shift;
     my $release=shift;
@@ -88,6 +120,7 @@ sub publish {
 
     if( $#platforms < 0 ) { @platforms=$project->platforms() };
 
+    my $report=new Report;
     # -- ensure all dependencies are available inside this publication
     foreach my $platform ( @platforms ) {
         $self->verbose("publishing ".($project->name())." on platform ".($platform->name()) );
@@ -95,14 +128,46 @@ sub publish {
             if( ! $self->isPublished($package, $platform, $release) ) {
                 my $depProject=$package->getProject($package);
                 if( $depProject ) {
-                    $self->publish($release, $depProject, $release);
+                    $report->addReport($self->publish($release, $depProject, $release));
                 }
             }
         }
-        # -- now publish the package
+        # -- now publish the packages
         my @repos=$self->getPlatformRepositories($platform);
-        $project->publishPlatform($platform, $release, @repos );
+        my @packs=$project->getPackages($platform);
+        if( $#packs >= 0 ) {
+            foreach my $repo ( @repos ) {
+                #$report->addReport($project->publishPlatform($platform, $release, @repos ));
+                my @ppacks=@packs;
+                #for(@packs) {
+                #    my $type=$_->type();
+                #    $self->verbose("checking if repository ".$repo->name()." supports packages of type $type\n");
+                #    if( grep( /$type/i , $repo->packageTypes()) ) {
+                #            push @ppacks, $_;
+                #    }
+                #    else {
+                #        $self->verbose("package type $type unsupported");
+                #    }
+                #}
+                if( $#ppacks>=0) {
+                    if($self->{verbose}) {
+                        my $str="";
+                        for(@ppacks) {
+                            $str.=$_->name();
+                        }
+                        $self->verbose("publishing $str to :'".($repo->name())."'");
+                    }
+                    $repo->add( $release, @ppacks );
+                }
+            }
+        }
+        else {
+            warn("no packages defined");
+            $report->addStderr("no packages defined");
+            $report->setReturnValue(1);
+        }
     }
+    return $report;
 }
 
 #
@@ -113,7 +178,6 @@ sub isPublished {
     my $package=shift;
     my $platform=shift;
     my $release=shift;
-
 
     # -- check availability on host platform
     return 1, if( $platform->hasPackage( $package ) );
