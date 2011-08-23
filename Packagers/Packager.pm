@@ -60,6 +60,15 @@ sub projectName {
     return $pName;
 }
 
+sub projectVersion {
+    my $self=shift;
+    my $version=$self->buildInfo("packageVersion");
+    if( ! defined $version ) {
+        $version=$self->{project}->version($self->{platform});
+    }
+    return $version;
+}
+
 sub packageFiles {
     my $self=shift;
     return $self->projectName();
