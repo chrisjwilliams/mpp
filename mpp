@@ -377,6 +377,9 @@ sub platform
     if(defined $plat->ip()) {
         print "ip       : ",$plat->ip(),"\n", 
     }
+    if(defined $plat->mac()) {
+        print "mac      : ",$plat->mac(),"\n", 
+    }
     print "platform : ", $plat->platform(),"\n";
     print "arch     : ", $plat->arch(),"\n";
     return;

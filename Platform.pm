@@ -305,6 +305,11 @@ sub startup {
     return $report;
 }
 
+sub mac {
+    my $self=shift;
+    return $self->{config}->var("network", "mac");
+}
+
 sub initialise {
     my $self=shift;
     if( $self->{config}->definedSection("startup") ) {
