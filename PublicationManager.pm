@@ -43,7 +43,7 @@ sub getPublication {
     my $name=shift;
     if ( defined $name ) {
        if( ! defined $self->{pubs}{$name} ) {
-            my ($loc)=$self->{platformPath}->find($name);
+            my ($loc)=$self->{pubPath}->find($name);
             if( defined $loc ) {
                 $self->verbose( "initialising $name from file :".$loc );
                 my $config=INIConfig->new($loc);

@@ -17,6 +17,8 @@ package Packagers::Debian;
 use strict;
 use Packagers::Packager;
 use RemoteFileHandle;
+use Manglers::DigitsFirst;
+use Manglers::ReplaceNonAlphaNumeric;
 our @ISA=qw(Packagers::Packager);
 1;
 
@@ -34,6 +36,11 @@ sub new {
 
     # -- type locations
     #$self->{typesLocations}=$self->{platform}->locations();
+
+    # default version mangler
+    my $mangler=new Manglers::ReplaceNonAlphaNumeric;
+    $mangler->addMangler(new Manglers::DigitsFirst);
+    $self->setVersionMangler($mangler);
 
     # -- calculate locations
     $self->{srcDir}=$self->{project}->srcDir();
@@ -55,16 +62,16 @@ sub projectName {
     return $projname;
 }
 
-sub projectVersion {
-    my $self=shift;
+#sub projectVersion {
+#    my $self=shift;
     # _ is not allowed
-    (my $version=$self->SUPER::projectVersion())=~s/_/-/g;
+#    (my $version=$self->SUPER::projectVersion())=~s/_/-/g;
     # -- must start with a digit 
-    $version=~s/^(\D+)(.*)/0.$2$1/; # if starts with anything else, 
+    #$version=~s/^(\D+)(.*)/0.$2$1/; # if starts with anything else, 
                                    # then move word to end of the version string
                                    # and insert a 0. before it
-    return $version;
-}
+#    return $version;
+#}
 
 sub setup {
     my $self=shift;

@@ -74,6 +74,7 @@ sub getProject {
     my $self=shift;
     my $name=shift;
     my $version=shift;
+    my $publication=shift || $self->{api}->defaultPublication();
 
     require Project;
     require ProjectInfo;
@@ -91,7 +92,7 @@ sub getProject {
             my $config=INIConfig->new($file);
             $config->mergeSection("verbose", $self->{config} );
             my $pinfo=ProjectInfo->new($config, $prjloc, $name, $version);
-            my $pj=Project->new($config, $self->{api}, $pinfo);
+            my $pj=Project->new($config, $self->{api}, $pinfo, $publication);
             return $pj;
         }
     }

@@ -46,6 +46,8 @@ sub new {
     $self->{config}=shift;
     $self->{api}=shift;
     $self->{project}=shift;
+    $self->{publication}=shift;
+    if( ! defined $self->{publication} ) { croak "no publication specifed"; }
     $self->{verbose}=$self->{config}->var("verbose","Project");
     $self->{verbose}=0, if( !defined $self->{verbose});
     $self->{loc}=$self->{project}->projectDir();
@@ -229,6 +231,8 @@ sub buildPlatform {
     my $self=shift;
     my $platform=shift;
     my $log = shift;
+    my @repositories=@_;
+
     my $workspace=$self->{workspace};
     my $rv=0;
 
@@ -237,17 +241,23 @@ sub buildPlatform {
     my $localwork=$self->_localwork($platform);
     my $packager=$self->_getPackager($workspace, $platform, $self->{project});
 
-# install any repositories
+    # -- install any repositories
+    foreach my $rep ( @repositories ) {
+        $self->_installReps($platform, $rep, $log);
+    }
+
     my $rep=$packager->buildInfo("useRepository");
     if( defined $rep ) {
         $self->_installReps($platform, $rep, $log);
         $platform->updatePackageInfo($log) , if( ! defined $self->{options}{no_deps} );
     }
+    elsif( $#repositories > 0 ) {
+        $platform->updatePackageInfo($log) , if( ! defined $self->{options}{no_deps} );
+    }
 
-# copy over the source code and unpack it
+    # copy over the source code and unpack it
     my $srcPack=$self->{project}->srcPack();
     if( ! defined $self->{options}{no_patch} ) {
-#my @patches=($self->{project}->patches(), $packager->buildInfo("patches")) ;
         my @patches=($packager->patches());
         for( @patches ) {
             if( defined $_ && $_ ne "" ) {
@@ -255,7 +265,7 @@ sub buildPlatform {
             }
         }
     }
-# -- prepare the source code
+    # -- prepare the source code
     my $src;
     if( defined $srcPack && defined ($src=$srcPack->packageFile()) )
     {
@@ -807,7 +817,12 @@ sub _getPackager
         if( ! defined $type ) {
             die "packageType not defined for ".($platform->name());
         }
-        $self->{packager}{$platform}{$name}=$self->{api}->createPackager($type, $platform, $workspace, $self->{config}, $info );
+        if( defined $self->{publication} ) {
+            $self->{packager}{$platform}{$name}=$self->{publication}->getPackager($type, $platform, $workspace, $self->{config}, $info );
+        }
+        else {
+            $self->{packager}{$platform}{$name}=$self->{api}->createPackager($type, $platform, $workspace, $self->{config}, $info );
+        }
         # -- propagate options
         foreach my $opt ( keys %{$self->{options}} ) {
             $self->{packager}{$platform}{$name}->{config}->setList("options", $opt);

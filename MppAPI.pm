@@ -80,6 +80,18 @@ sub new {
     return $self;
 }
 
+sub defaultPublication {
+    my $self=shift;
+    if( ! defined $self->{publication} ) {
+        my $default=$self->{config}->var("mpp","defaultPublication");
+        if( ! defined $default ) {
+            die( "defaultPublication has not been defined in \"[mpp]\"" );
+        }
+        $self->{publication}=$self->getPublicationManager()->getPublication($default);
+    }
+    return  $self->{publication};
+}
+
 sub expandGlobals {
     my $self=shift;
     my $string=shift;

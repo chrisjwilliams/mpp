@@ -17,6 +17,7 @@
 # arch(ProjectInfo) : return the arcitecture of the package
 # setEnv(name,value) : set the value of a buildInfo variable
 # build( downloadDir, FileHandle log ) : dowloadDir is the directory in which to store packages
+# setVersionMangler(Mangler);
 
 package Packagers::Packager;
 use strict;
@@ -66,7 +67,15 @@ sub projectVersion {
     if( ! defined $version ) {
         $version=$self->{project}->version($self->{platform});
     }
+    if( defined $self->{vmangler} ) {
+        $version=$self->{vmangler}->mangle($version);
+    }
     return $version;
+}
+
+sub setVersionMangler {
+    my $self=shift;
+    $self->{vmangler}=shift;
 }
 
 sub packageFiles {

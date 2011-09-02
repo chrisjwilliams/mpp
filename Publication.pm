@@ -17,6 +17,7 @@ use FileHandle;
 use Server;
 use RemoteFileHandle;
 use File::Copy;
+use Manglers::Base;
 use Report;
 1;
 
@@ -73,11 +74,31 @@ sub getPlatformRepositories {
     return @repos;
 }
 
-sub getRepository {
+sub getPackager {
+    my $self=shift;
+    my $type=shift;
+    my $platform=shift;
+
+    my $pf=$self->{api}->createPackager($type,$platform, @_);
+    # -- set publication specific options on the packager
+    if( defined $platform ) {
+        my $schema=$self->platformInfo("versionMangler", $platform);
+        if( defined $schema && $schema ne "" ) {
+            $self->verbose("setting version mangler to $schema");
+            $pf->setVersionMangler( Manglers::Base::createMangler(split(/,/,$schema)) );
+        }
+    }
+    return $pf;
+}
+
+sub getPublisher {
     my $self=shift;
     my $name=shift;
+    my $platform=shift;
+
     my $pf=$self->{api}->getPublisherFactory();
-    return $pf->getPublisher( $name );
+    my $repo=$pf->getPublisher( $name );
+    return $repo;
 }
 
 sub unpublish {
@@ -275,3 +296,32 @@ sub _platformHTML {
     print $fh "<h2>Installation Instructions</h2>";
     print $fh $platform->installer()->installationHelp();
 }
+
+sub platformInfo {
+    my $self=shift;
+    my $name=shift;
+    my $platform=shift;
+    my $key="platform";
+    my @keys=( $key."::".$platform->name(),
+               $key."::".$platform->platform() );
+    my @vals=$self->{config}->searchVarSections($name, @keys);
+    $self->verbose("platformInfo() searching for $name in sections @keys, found @vals");
+    return $vals[0]; # only return the first value found
+}
+
+sub sectionInfo {
+    my $self=shift;
+    my $section=shift;
+    my $name=shift;
+    my $platform=shift;
+
+    my @keys=($section);
+    if( defined $platform ) {
+        unshift @keys, ($section."::".($platform->name()),
+              $section."::".($platform->platform()),
+              $section );
+    }
+    my $val=$self->{config}->searchInfo($name,@keys);
+    return $val;
+}
+
