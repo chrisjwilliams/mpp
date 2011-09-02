@@ -170,6 +170,15 @@ sub getPlatforms {
     return $self->getContextualisedPlatforms($self->getDefaultContext(), @_ );
 }
 
+sub getPublicationManager {
+    my $self=shift;
+    if ( ! defined $self->{publicationFac} ) {
+        require PublicationManager;
+        $self->{publicationFac}=PublicationManager->new( $self );
+    }
+    return $self->{publicationFac};
+}
+
 sub getPublisherFactory {
     my $self=shift;
     if ( ! defined $self->{pubFac} ) {

@@ -123,13 +123,13 @@ sub test_publishNoDeps {
         # Use Case:
         # simple project with no dependencies, not yet built
         # Expect:
-        # throw a fatal error
+        # do nothing, return a report that indicates failure with a useful message
         my $proj=new TestUtils::TestProject($api, $self->{tmpdir}, 
                                             $self->{testConfigDir} );
         my $pub=$self->getPublicationObject($api,$config);
-        eval { $pub->publish($release, $proj, $platform); };
-        if(! $@) {
-       #     die("expecting throw when attempting to publish a project that has not been built");
+        my $report=$pub->publish($release, $proj, $platform);
+        if(!$report->failed()) {
+            die("expecting throw when attempting to publish a project that has not been built");
         }
     }
 }

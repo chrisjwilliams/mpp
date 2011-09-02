@@ -22,6 +22,7 @@ $::defVersion="dev";
 my $prjbase=$ENV{HOME}."/PackageMaker";
 $::prjloc=$prjbase."/Projects"; # default
 $::platformloc=$prjbase."/Platforms"; # default
+$::publoc=$prjbase."/Publications"; # default
 $::configPath="/etc:$ENV{HOME}/.:$prjbase";
 $::configDirPath="/etc/mpp.d:$prjbase/config.d";
 my @allowedcmds=qw(list new build install uninstall test run halt start status publish unpublish publisher publications platforms platform);
@@ -144,6 +145,7 @@ sub config {
         # -- add the default local working areas
         $::config->setList("platformLocation", $::platformloc);
         $::config->setList("projectLocation", $::prjloc);
+        $::config->setList("publicationLocation", $::publoc);
         # -- set verbosity levels
         foreach my $key ( (keys %::verbose) ) {
             print "Setting verbose on class $key\n";
@@ -446,11 +448,9 @@ sub publications
 {
     my $self=shift;
 
-    my @pubs=@_;
-    my $pf = $self->{api}->getPublisherFactory();
-    if( $#pubs >= 0 ) {
-         print (join("\n\t", $pf->publications() ));
-    }
+    my $pf = $self->{api}->getPublicationManager();
+    print (join("\n\t", $pf->listPublications() ));
+    print "\n";
 }
 
 sub help_unpublish

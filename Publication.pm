@@ -28,7 +28,6 @@ sub new {
     $self->{api}=shift;
     $self->fatal("no name specified"), if( ! defined $config->var("publication","name"));
     #$self->{infoserver}=Server->new($config);
-    $self->{verbose}=1;
     return $self;
 }
 
