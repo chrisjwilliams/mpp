@@ -128,3 +128,62 @@ sub removeItemFromList {
     }
 }
 
+sub searchVarSections {
+    my $self=shift;
+    my $s1="section1";
+    my $s2="section1";
+    my $s3="section1";
+    my @sections=($s1, $s2, $s3);
+    my $var="var1";
+    my $val1="dummy1";
+    my $val2="dummy2";
+    my $val3="dummy3";
+
+    # Use Case:
+    # call search on an empty config
+    # Expect:
+    # return an empty list
+    {
+        my $config = INIConfig->new();
+        my @l = $config->searchVarSections($var,@sections);
+        die("expecting 0 items, got ".($#l + 1)."(@l)"), if( $#l != -1 );
+    }
+    # Use Case:
+    # call search on an config with some sections existing but no var defined
+    # Expect:
+    # return an empty list
+    {
+        my $config = INIConfig->new();
+        $config->setVar($s1,"other","dummy");
+        $config->setVar($s3,"other","dummy");
+        my @l = $config->searchVarSections($var,@sections);
+        die("expecting 0 items, got ".($#l + 1)."(@l)"), if( $#l != -1 );
+    }
+    # Use Case:
+    # call search on an config with some sections existing var defined in last section
+    # Expect:
+    # return a list with a single value, that of the last section
+    {
+        my $config = INIConfig->new();
+        $config->setVar($s1,"other","dummy");
+        $config->setVar($s3,$var,$val3);
+        my @l = $config->searchVarSections($var,@sections);
+        die("expecting 1 item, got ".($#l + 1)."(@l)"), if( $#l != 0 );
+        die("expecting $val3, got ".$l[0]), if( $l[0] ne $val3 );
+    }
+    # Use Case:
+    # call search on an config with some sections existing var defined in last section
+    # Expect:
+    # return an empty list
+    {
+        my $config = INIConfig->new();
+        $config->setVar($s1,$var,$val1);
+        $config->setVar($s2,"other",$val2);
+        $config->setVar($s3,$var,$val3);
+        my @l = $config->searchVarSections($var,@sections);
+        die("expecting 2 items, got ".($#l + 1)."(@l)"), if( $#l != 1 );
+        die("expecting $val1, got ".$l[0]), if( $l[0] ne $val1 );
+        die("expecting $val3, got ".$l[1]), if( $l[1] ne $val3 );
+    }
+}
+

@@ -306,6 +306,23 @@ sub mergeSection {
                 if( ! grep /^$section/, @{$self->{sections}} );
 }
 
+#
+#  search for a named variable in the sections provided
+#  returns a list of all found values in order of provided sections
+#
+sub searchVarSections {
+    my $self=shift;
+    my $var=shift;
+    my @res=();
+    for( @_ ) { # iterate over sections provided
+        my $val=$self->var($_,$var);
+        if( defined $val ) {
+            push @res, $val;
+        }
+    }
+    return @res;
+}
+
 # -- private methods -------------------------
 
 sub _savefile {
