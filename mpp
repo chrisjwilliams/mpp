@@ -207,7 +207,11 @@ sub halt
     my $context=$self->_getContext(@_);
     my @plats=$self->{api}->getContextualisedPlatforms($context, @_);
     foreach my $p ( @plats ) {
-        print $p->shutdown();
+        my $report=$p->shutdown();
+        if( $report->failed() ) {
+            print $report->stdout(),"\n";
+            print $report->stderr(),"\n";
+        }
     }
     return;
 }
@@ -268,7 +272,11 @@ sub start
     my $context=$self->_getContext(@_);
     my @plats=$self->{api}->getPlatforms(@_);
     foreach my $p ( @plats ) {
-        print $p->startup();
+        my $report=$p->startup();
+        if( $report->failed() ) {
+            print $report->stdout(),"\n";
+            print $report->stderr(),"\n";
+        }
     }
     return;
 }
