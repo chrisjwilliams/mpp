@@ -701,6 +701,71 @@ sub hasOverlay {
     return 0;
 }
 
+sub login {
+    my $self=shift;
+    my $report = new Report;
+    $report = $self->startup();
+    $self->verbose("login()");
+    # -- check for controller invocation
+    my $controller=$self->_getController();
+    if( defined $controller ) {
+        $report = $controller->loginPlatform($self,$self->{user});
+    }
+    else {
+        # -- use ssh if there is no controller
+        $report=$self->loginSSH();
+    }
+    if( ! $report->returnValue() ) { $self->{lastCheckTime} = time(); }
+    return $report;
+}
+
+sub loginSSH {
+    my $self=shift;
+    my $report=Report->new();
+    if( defined $self->{user} && $self->{user} ne "" && defined $self->ip() )
+    {
+      my $pid;
+      eval {
+          #require Term::ReadKey;
+          #Term::ReadKey::ReadMode('raw');
+          # fork structure taken from "Programming Perl" by Wall et al.
+          FORK: {
+                    if ($pid=fork) {
+                          # see if it is non-zero.
+                          # Parent process here
+                          # Child pid is in $pid
+                          my $msg="Logging in to ".($self->name())."(".$self->ip().") as ".$self->{user}."...";
+                          $report->addStdout("interactive shell on ".$self->name()."(".$self->ip().") as ".$self->{user});
+                          print $msg, "\n";
+                    } elsif (defined($pid)){
+                        # Child process here
+                        # parent process pid is available with getppid
+                        # exec will transfer control to the tar process, and will
+                        # finish (exit) when the tar is done.
+                        exec("ssh","-l",$self->{user},$self->ip());
+                    } elsif ($! == Net::Ping::EAGAIN ) {
+                        # EAGAIN is the supposedly recoverable fork error
+                        sleep 5;
+                        redo FORK;
+                    } else {
+                        #weird fork error
+                        die "Can't fork: $!\n";
+                    }
+            } # end FORK
+
+        };
+        if( $@ ) {
+            $report->addStderr("error invoking shell: $@");
+        }
+        #Term::ReadKey::ReadMode('restore');
+        waitpid $pid, 0;
+        my $res=$? >> 8;
+        $report->setReturnValue($res);
+    }
+    else { $report->addStderr("login or ip not set for ssh"); }
+    return $report;
+}
+
 sub invoke {
     my $self=shift;
     my $cmd=shift;

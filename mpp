@@ -25,7 +25,7 @@ $::platformloc=$prjbase."/Platforms"; # default
 $::publoc=$prjbase."/Publications"; # default
 $::configPath="/etc:$ENV{HOME}/.:$prjbase";
 $::configDirPath="/etc/mpp.d:$prjbase/config.d";
-my @allowedcmds=qw(list new build install uninstall test run halt start status publish unpublish publisher publications platforms platform);
+my @allowedcmds=qw(list new build install uninstall test run halt start login status publish unpublish publisher publications platforms platform);
 
 # ----------------- command parsing --------------------
 # -- parse options
@@ -329,6 +329,37 @@ sub install
     foreach my $platform ( @plats ) {
         $project->install( $platform );
     }
+}
+
+sub help_login
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "login platform_type\n";
+    print "Decription:\n\t";
+    print "login to a terminal on the specified machine\n";
+}
+
+sub login 
+{
+    my $self=shift;
+    my $platform=shift;
+
+    my $pm=$self->{api}->getPlatformManager();
+    my $context=$self->_getContext(@_);
+    my $plat=$pm->getPlatform($platform, $context);
+    if (! defined $plat ) 
+    {
+        print "unknown platform '$platform'\n";
+        exit 1;
+    }
+    my $report=$plat->login(@_);
+    if( $report->failed()) {
+        print $report->stdout(),"\n";
+        print $report->stderr(),"\n";
+        exit 1;
+    }
+    exit 0;
 }
 
 sub help_run

@@ -8,6 +8,7 @@
 # startPlatform(Platform )                : start up the specified platform
 # stopPlatform(Platform )                 : stop a platform instance
 # executePlatform(Platform, username)     : execute the commands on the specified platform
+# loginPlatform(Platform, username)       : start up an interactive shell on the specified platform
 # isPresent(Platform)                     : verify if the machine is up and running
 # upload(Platform, username, { src=>dest } ) : upload the specfied files to the directory on the specified machine
 # download(Platform, username, remotedir, localdir, @files)       : 
@@ -101,6 +102,15 @@ sub executePlatform {
 
     # -- default is to use ssh of the managed platform directly
     return $platform->invokeSSH($cmd,$log);
+}
+
+sub loginPlatform {
+    my $self=shift;
+    my $platform=shift;
+    my $username=shift;
+
+    # -- default is to use ssh of the managed platform directly
+    return $platform->loginSSH();
 }
 
 sub platformIP {
