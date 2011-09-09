@@ -719,6 +719,63 @@ sub login {
     return $report;
 }
 
+#
+# Use when ssh is not directly available, or machine is behind
+# a NAT firewall
+#
+sub loginReverseShell {
+    my $self=shift;
+    my $report=Report->new();
+    $report->addStdout("ReverseShell connection to ".$self->name()."(".$self->ip().")");
+    my $pid;
+    my $port=$self->{config}->var("network","reverseShellPort");
+    if( ! defined $port ) {
+        $report->addStdErr("[network]\nreverseShellPort not set");
+        $report->setReturnValue(1);
+        return $report;
+    }
+    eval {
+          require ReverseShell;
+          require Term::ReadKey;
+          Term::ReadKey::ReadMode('raw');
+          my $rs=ReverseShell->new($port, $self->hostname() );
+          $rs->listen(\*STDOUT,\*STDIN);
+          $self->remoteCommand("reverseShell");
+          #FORK: {
+          #  if ($pid=fork) {
+                # see if it is non-zero.
+                # Parent process here
+                # Child pid is in $pid
+          #      my $msg="Connection to ".$self->name()."(".$self->ip()." using a ReverseShell";
+          #      $report->addStdout("starting interactive shell on ".$self->name()."(".$self->ip().")");
+                # start the reverse shell
+          #      $self->remoteCommand("reverseShell");
+          #      print $msg, "\n";
+          #  } elsif (defined($pid)) {
+                # Child process here
+                # start the client
+                # Could replace this with a simple perl socket and redirect but I'm lazy
+          #      exec("netcat","-v", "-l", "-p", $port);
+          #  } elsif ($! == Net::Ping::EAGAIN ) {
+          #      # EAGAIN is the supposedly recoverable fork error
+          #      sleep 5;
+          #      redo FORK;
+          #  } else {
+                #weird fork error
+          #      die "Can't fork: $!\n";
+          #  }
+        #} # end FORK
+    };
+    if( $@ ) {
+        $report->addStderr("error invoking shell: $@");
+    }
+    Term::ReadKey::ReadMode('restore');
+    waitpid $pid, 0;
+    my $res=$? >> 8;
+    $report->setReturnValue($res);
+    return $report;
+}
+
 sub loginSSH {
     my $self=shift;
     my $report=Report->new();
@@ -752,7 +809,6 @@ sub loginSSH {
                         die "Can't fork: $!\n";
                     }
             } # end FORK
-
         };
         if( $@ ) {
             $report->addStderr("error invoking shell: $@");
