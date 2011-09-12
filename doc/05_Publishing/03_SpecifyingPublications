@@ -1,9 +1,31 @@
-## Defining Publication Servers ##
+## Defining Publications ##
+A publication defines a collection of repositores,servers, and conventions that 
+are to be used to support one or more software products. Mpp allows you to 
+support multiple publications.
 
-Packages can be made available through one or more servers. Different 
-servers will be needed for the different architectures supported.
+## Publication configuration files ##
 
-Each server needs to be described to mpp in the main configuration file (mpp.conf). 
+### The [publication] section ###
+Generic information about the publication:
+name        : The name of the publication (defaults to the file name)
+description : A brief description of the publication
+url         : a url for the publication
+
+### Publication Repositories. The [repositories] section ###
+Packages can be made available through one or more repositories. Different 
+repositores will be needed for the different architectures supported.
+
+Each repository needs to be described to mpp in the main configuration file (mpp.conf).
+The repositories to be associated with the publication are then provided as a 
+list of these repository names.
+
+## Defining platform specifics. The [platform] section ##
+For each supported platform, a [platform::<platform_name>] section is 
+required. Allowed values under this section are:
+
+versionMangler : Define a version string mangler to override the default associated with the
+                 repository type.
+repository     : define the repository to be associated with this platform
 
 ## The [publisher::server_name] section ##
 
