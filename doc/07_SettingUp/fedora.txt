@@ -21,3 +21,7 @@ chkconfig --level 345 sshd on
 
 # open a hole in the firewall for ssh traffic (before COMMIT)
 -A INPUT -m state --state NEW -m tcp -p tcp --dport 22 -j ACCEPT
+
+# speed up ssh access by disappling GSSAPPI
+/etc/ssh/sshd_conf
+GSSAPIAuthentication no
