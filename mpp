@@ -760,10 +760,6 @@ sub _shutdownAndReport {
 
     my @failed=$report->failedReports();
     print $#failed+1, " platforms failed:\n";
-    foreach my $rep ( @failed ) {
-        my $plat = $rep->platform();
-        print "\t",$plat->name(),"\n";
-    }
 
     # -- leave on platforms that have failed
     foreach my $rep ( @failed ) {
@@ -789,6 +785,11 @@ sub _shutdownAndReport {
                 $plat->shutdown();
             }
         }
+    }
+    print $#failed+1, " platforms failed:\n";
+    foreach my $rep ( @failed ) {
+        my $plat = $rep->platform();
+        print "\t",$plat->name(),"\n";
     }
     return $#failed+1;
 }
