@@ -113,20 +113,20 @@ sub test_publishNoDeps {
         # simple project with no dependencies, and already built
         # Expect:
         # repository to be called with package
-        my $proj=new TestUtils::BuiltTestProject($api, $self->{tmpdir}, $self->{testConfigDir});
         my $pub=$self->getPublicationObject($api,$config);
+        my $proj=new TestUtils::BuiltTestProject($api, $self->{tmpdir}, $self->{testConfigDir}, $pub);
         my $report=$pub->publish($release, $proj, $platform);
         die("Expecting it to publish OK"), if($report->failed());
     }
-
     {
         # Use Case:
         # simple project with no dependencies, not yet built
         # Expect:
         # do nothing, return a report that indicates failure with a useful message
-        my $proj=new TestUtils::TestProject($api, $self->{tmpdir}, 
-                                            $self->{testConfigDir} );
         my $pub=$self->getPublicationObject($api,$config);
+        $pub->setVerbose(1);
+        my $proj=new TestUtils::TestProject($api, $self->{tmpdir}, 
+                                            $self->{testConfigDir}, $pub );
         my $report=$pub->publish($release, $proj, $platform);
         if(!$report->failed()) {
             die("expecting throw when attempting to publish a project that has not been built");

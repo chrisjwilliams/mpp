@@ -74,6 +74,20 @@ sub getPlatformRepositories {
     return @repos;
 }
 
+sub setupRepositories {
+    my $self=shift;
+    my $log=shift;
+    my $release=shift; # release level
+    my $platform=shift;
+
+    my @repos=$self->getPlatformRepositories($platform);
+    for( @repos ) {
+        print $log "adding repository ",$_->name(), " release: $release\n";
+        $platform->addPackageRepository($log,$_,$release);
+    }
+    return @repos;
+}
+
 sub getPackager {
     my $self=shift;
     my $type=shift;
@@ -91,10 +105,9 @@ sub getPackager {
     return $pf;
 }
 
-sub getPublisher {
+sub getRepository {
     my $self=shift;
     my $name=shift;
-    my $platform=shift;
 
     my $pf=$self->{api}->getPublisherFactory();
     my $repo=$pf->getPublisher( $name );
@@ -143,13 +156,24 @@ sub publish {
     my $report=new Report;
     # -- ensure all dependencies are available inside this publication
     foreach my $platform ( @platforms ) {
+        my $buildstatus=$project->statusPlatform("build", $platform);
+        $self->verbose("Build status of project ".$project->name()." ".$project->version()." : ".$buildstatus);
+        if( $buildstatus ne "built") {
+            $report->addStderr("project ".($project->name())." ".($project->version())." has not been built");
+            $report->setReturnValue(1);
+            return $report;
+        }
         $self->verbose("publishing ".($project->name())." on platform ".($platform->name()) );
         foreach my $package ( $project->dependencies() ) {
+            $self->verbose("checking dependency ".($project->name())." on ".($platform->name()), $package );
             if( ! $self->isPublished($package, $platform, $release) ) {
                 my $depProject=$package->getProject($package);
                 if( $depProject ) {
                     $report->addReport($self->publish($release, $depProject, $release));
                 }
+            }
+            else { 
+                $self->verbose("dependency is already published ".($package)." on ".($platform->name()), $package );
             }
         }
         # -- now publish the packages
@@ -213,15 +237,18 @@ sub isPublished {
 
 sub createInstallPackages {
     my $self=shift;
+    my @platforms=@_;
     die("createInstallPackages: not yet implemented");
 
-#    foreach my $publisher ( $self->publishers() ) {
+#    foreach my $repo ( @repofiles ) {
+#    foreach my $repo ( $self->repositories() ) {
 #        my $inicfg=INIConfig->new();
 #        $inicfg->setVar("project","name", $publisher->name());
 #        $inicfg->setVar("project","version", 0.0);
 #        $inicfg->setList("install",@repofiles);
 #        my $info=new ProjectInfo( $inicfg );
-#        my $project=new Project->($self->{api}, $info);
+#        my $project=new Project->($self->{api}, $info, $self);
+#        $project->setPlatforms(@platforms);
 #        $project->build();
 #        $project->packages($publisher->arch());
 #    }

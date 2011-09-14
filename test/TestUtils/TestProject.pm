@@ -21,6 +21,7 @@ sub new {
     my $api=shift;
     my $tmpDir=shift || croak "TestProject: please supply tmpdir";
     my $testConfigDir=shift || croak "TestProject: please supply configuration";
+    my $publication=shift || croak "TestProject: please supply a publication";
     my $config=shift;
     my $name=shift || "TestProject";
     if( ! defined $config ) {
@@ -40,7 +41,7 @@ sub new {
     }
 
     my $info=ProjectInfo->new($config, $tmpDir, $name,"testVersion");
-    my $self=$class->SUPER::new($config, $api, $info);
+    my $self=$class->SUPER::new($config, $api, $info, $publication);
     bless $self, $class;
     return $self;
 }

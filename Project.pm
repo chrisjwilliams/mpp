@@ -23,6 +23,7 @@ package Project;
 use INIConfig;
 use Platform;
 use File::Basename;
+use ReleaseLevel;
 use Carp;
 use Config;
 use threads;
@@ -200,7 +201,7 @@ sub build {
 
 sub statusPlatform { 
     my $self=shift;
-    my $type=shift;
+    my $type=shift||die("must specify status type");
     my $platform=shift;
     return $self->{managers}{$type}->platformStatus($platform);
 }
@@ -242,16 +243,12 @@ sub buildPlatform {
     my $packager=$self->_getPackager($workspace, $platform, $self->{project});
 
     # -- install any repositories
+    my @reps;
     foreach my $rep ( @repositories ) {
-        $self->_installReps($platform, $rep, $log);
+        push @reps,$self->_installReps($platform, $rep, $log);
     }
-
-    my $rep=$packager->buildInfo("useRepository");
-    if( defined $rep ) {
-        $self->_installReps($platform, $rep, $log);
-        $platform->updatePackageInfo($log) , if( ! defined $self->{options}{no_deps} );
-    }
-    elsif( $#repositories > 0 ) {
+    push @reps,$self->_platformRepositories($log,$platform);
+    if( scalar @reps ) {
         $platform->updatePackageInfo($log) , if( ! defined $self->{options}{no_deps} );
     }
 
@@ -356,8 +353,7 @@ sub buildPlatform {
             $platform->shutdown();
         }
         else {
-            if( defined $rep ) {
-                $self->_removeReps($platform, $rep);
+            if( $self->_removeReps($platform, $log, @reps ) ) {
                 $platform->updatePackageInfo($log) , if( ! defined $self->{options}{no_deps} );
             }
         }
@@ -552,16 +548,37 @@ sub install {
 
     my $name=$self->packageName($platform);
     my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
-    my $rep=$packager->buildInfo("useRepository");
-    $self->_installReps($platform, $rep, $log);
+    my @reps=$self->_platformRepositories($log,$platform);
+    #my $rep=$packager->buildInfo("useRepository");
+    #$self->_installReps($platform, $rep, $log);
     $platform->updatePackageInfo($log);;
     $platform->installPackages($log, $name);
-    $self->_removeReps($platform, $rep);
-    $platform->updatePackageInfo($log);;
+    if( $self->_removeReps($platform, $log, @reps) ) {
+        $platform->updatePackageInfo($log);;
+    }
 }
 
 
 # -- private methods -------------------------
+sub _platformRepositories {
+    my $self=shift;
+    my $log=shift;
+    my $platform=shift;
+    my $version=shift||"pre-release"; # nasty hack
+
+    my @reps;
+    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+    my $rep=$packager->buildInfo("useRepository");
+    if( defined $rep ) {
+        push @reps,$self->_installReps($platform, $rep, $log);
+    }
+    if( $self->{publication} ) {
+        for($self->{publication}->setupRepositories($log,$version,$platform)) {
+            push @reps, ReleaseLevel->new($version, $_);
+        }
+    }
+    return @reps;
+}
 
 sub _installReps {
     my $self=shift;
@@ -570,13 +587,14 @@ sub _installReps {
     my $log=shift;
 
     if( defined $pubString ) {
-        my ($pub,$version) = split ( /:/, $pubString );
+        my ($pub,$version) = split( /:/, $pubString );
         if( defined $pub && defined $version ) {
             my $pf=$self->{api}->getPublisherFactory();
             my $publisher=$pf->getPublisher( $pub );
 #            $publisher->addRepository($platform, $version );
             print $log "adding repository ",$publisher->name(), " version: $version\n";
             $platform->addPackageRepository($log,$publisher,$version);
+            return new ReleaseLevel($version, $publisher);
         }
         else {
             die "useRepository badly formed (need repository_name:release) : $pubString\n";
@@ -587,20 +605,29 @@ sub _installReps {
 sub _removeReps {
     my $self=shift;
     my $platform=shift;
-    my $pubString=shift;
+    my $log=shift;
+    my @reps=@_;
 
-    if( defined $pubString ) {
-        my ($pub,$version) = split ( /:/, $pubString );
-        if( defined $pub && defined $version ) {
-            my $pf=$self->{api}->getPublisherFactory();
-            my $publisher=$pf->getPublisher( $pub );
-            #$publisher->addRepository($platform, $version );
-            $platform->removePackageRepository($publisher, $version );
-        }
-        else {
-            die "useRepository badly formed (need repository_name:release) : $pubString\n";
-        }
+    my $count=0;
+    foreach my $rep ( @reps ) {
+       my $release=$rep->level();
+       print $log "removing repository ",$rep->repository()->name(), " version: $release\n";
+       $platform->removePackageRepository($rep);
+       $count++;
     }
+    return $count;
+    #if( defined $pubString ) {
+        #my ($pub,$version) = split ( /:/, $pubString );
+        #if( defined $pub && defined $version ) {
+            #my $pf=$self->{api}->getPublisherFactory();
+            #my $publisher=$pf->getPublisher( $pub );
+            #$publisher->addRepository($platform, $version );
+            #$platform->removePackageRepository($publisher, $version );
+        #}
+        #else {
+            #die "useRepository badly formed (need repository_name:release) : $pubString\n";
+        #}
+    #}
 }
 
 sub _testPlatform {
@@ -618,21 +645,22 @@ sub _testPlatform {
     $self->_publishPlatform($platform, "mpp_test" );
 
     # install any required repositories
-    my $rep=$packager->buildInfo("useRepository");
-    $self->_installReps($platform, $rep, $log);
+    my @reps=$self->_platformRepositories($log,$platform);
+    #my $rep=$packager->buildInfo("useRepository");
+    #$self->_installReps($platform, $rep, $log);
 
-# -- add test repository to platforms package manager
+    # -- add test repository to platforms package manager
     foreach my $publisher ( $self->_getPublisher($platform) )
     {
         $platform->addPackageRepository($publisher, "mpp_test" );
     }
     $platform->updatePackageInfo($log);;
 
-# -- invoke the install
+    # -- invoke the install
     $platform->updatePackageInfo($log);
     $self->{tested}{$platform}=$platform->installPackages( $log, $packager->projectName());
 
-# ---- setup the testing environment
+    # ---- setup the testing environment
     my $binfo=BuildInfoMPP->new($self->{project},$platform,$self->{workspace});
     $self->_copyFiles($log, $platform, $binfo->sectionInfo("test","copy") );
     $self->_copyExpandFiles($log, $platform, $binfo->sectionInfo("test","copyExpand"), $packager );
@@ -649,7 +677,7 @@ sub _testPlatform {
 
     # -- clean up
     $self->_unpublishPlatform($platform, "mpp_test" );
-    $self->_removeReps($platform, $rep);
+    $self->_removeReps($platform, $log, @reps );
     return $rv;
 }
 

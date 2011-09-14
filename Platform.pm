@@ -488,7 +488,9 @@ sub removePackageRepository {
     my $type=$self->packageManagerType();
     my $manager=$self->_getPackageManager($type);
 
-    $manager->removeRepository(@_);
+    foreach my $release ( @_ ) {
+        $manager->removeRepository( $release->repository(), $release->level() );
+    }
 }
 
 sub installPackages {
