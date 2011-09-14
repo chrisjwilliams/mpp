@@ -801,7 +801,7 @@ sub loginSSH {
                         # parent process pid is available with getppid
                         # exec will transfer control to the tar process, and will
                         # finish (exit) when the tar is done.
-                        exec("ssh","-l",$self->{user},$self->ip());
+                        exec("ssh","-Y","-l",$self->{user},$self->ip());
                     } elsif ($! == Net::Ping::EAGAIN ) {
                         # EAGAIN is the supposedly recoverable fork error
                         sleep 5;
