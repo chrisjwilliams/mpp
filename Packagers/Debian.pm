@@ -141,12 +141,7 @@ sub build {
     return $rv;
 }
 
-sub _size {
-    my $self=shift;
-    my $dir=shift;
-    my $log=shift;
-    return $self->{platform}->remoteSubroutine( $self->{workdir}, $log, "diskUsage", $dir, "DEBIAN" );
-}
+
 
 sub _prepareDir {
     my $self=shift;

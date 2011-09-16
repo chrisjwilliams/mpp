@@ -257,3 +257,11 @@ sub env {
     my $e=Environment->new($self->{builder}->env(), $self->{env});
     return $e->env();
 }
+
+sub _size {
+    my $self=shift;
+    my $dir=shift;
+    my $log=shift;
+    my $report=$self->{platform}->remoteSubroutine( $self->{workdir}, $log, "diskUsage", $dir, "DEBIAN" );
+    return $report->stdout();
+}
