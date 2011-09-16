@@ -263,5 +263,6 @@ sub _size {
     my $dir=shift;
     my $log=shift;
     my $report=$self->{platform}->remoteSubroutine( $self->{workdir}, $log, "diskUsage", $dir, "DEBIAN" );
-    return $report->stdout();
+    (my $size)=$report->stdout();
+    return $size;
 }
