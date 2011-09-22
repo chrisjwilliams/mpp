@@ -188,7 +188,7 @@ sub _control {
     my $conflicts=$project->conflicts();
     my $replaces=$project->replaces();
     my $arch=$self->arch();
-    my $size=$self->_size($deb, $log);
+    my $size=$self->_size($deb, $log, "DEBIAN");
     { use integer; $size=$size/1024, if( $size != 0 ); }
     $depends = "", if( ! defined $depends );
     my $fh=RemoteFileHandle->new($self->{platform});

@@ -258,11 +258,18 @@ sub env {
     return $e->env();
 }
 
+#
+# return the size of a directory on the specified platform
+# arguments:
+# dir
+# log
+# @exclude
+#
 sub _size {
     my $self=shift;
     my $dir=shift;
     my $log=shift;
-    my $report=$self->{platform}->remoteSubroutine( $self->{workdir}, $log, "diskUsage", $dir, "DEBIAN" );
+    my $report=$self->{platform}->remoteSubroutine( $self->{workdir}, $log, "diskUsage", $dir, @_ );
     (my $size)=$report->stdout();
     return $size;
 }
