@@ -27,7 +27,7 @@ sub new {
 }
 
 sub tests {
-    return qw( test_init test_publishNoDeps test_publishWithDeps );
+    return qw( test_init test_publishNoDeps test_publishWithDeps test_platformSubstitution);
 }
 
 sub getAPI {
@@ -136,4 +136,68 @@ sub test_publishNoDeps {
 
 sub test_publishWithDeps {
     my $self=shift;
+}
+
+sub test_platformSubstitution {
+    my $self=shift;
+    my $api=$self->getAPI();
+    {
+        # Use Case:
+        # call with a platform name & empty usecase & no substiututes
+        # Expect:
+        # return original name
+        my $name="testPlatform";
+        my $config = new INIConfig;
+        my $pub=$self->getPublicationObject($api,$config);
+        my $res=$pub->platformSubstitution($name);
+        die("Expecting name to be unchanged"), if($res ne $name );
+    }
+    my $uc="test";
+    {
+        # Use Case:
+        # call with a platform name & valid usecase & no substiututes
+        # Expect:
+        # return original name
+        my $name="testPlatform";
+        my $config = new INIConfig;
+        my $pub=$self->getPublicationObject($api,$config);
+        my $res=$pub->platformSubstitution($name, $uc);
+        die("Expecting name to be unchanged"), if($res ne $name );
+    }
+    my $sname="subsPlatform";
+    {
+        # Use Case:
+        # call with a platform name with a global substitution
+        # Expect:
+        # return substitute
+        my $name="testPlatform";
+        my $config = new INIConfig;
+        $config->setVar("platform::$name", "platform", $sname);
+        my $pub=$self->getPublicationObject($api,$config);
+        # - no usecase
+        my $res=$pub->platformSubstitution($name);
+        die("Expecting name to be changed : got $res"), if( $res ne $sname );
+        # - any usecase
+        my $res2=$pub->platformSubstitution($name, $uc);
+        die("Expecting name to be changed : got $res2"), if($res2 ne $sname );
+    }
+    {
+        # Use Case:
+        # call with a platform name with a usecase specific substitution
+        # Expect:
+        # return substitute for the specified usecase only
+        my $name="testPlatform";
+        my $config = new INIConfig;
+        $config->setVar("platform::$name", $uc."Platform", $sname);
+        my $pub=$self->getPublicationObject($api,$config);
+        # - no usecase
+        my $res=$pub->platformSubstitution($name);
+        die("Expecting name to be unchanged : got $res"), if( $res ne $name );
+        # - substitute usecase
+        my $res2=$pub->platformSubstitution($name, $uc);
+        die("Expecting name to be changed : got $res2"), if($res2 ne $sname );
+        # - other usecase
+        my $res3=$pub->platformSubstitution($name, "other");
+        die("Expecting name to be unchanged : got $res3"), if($res3 ne $name );
+    }
 }

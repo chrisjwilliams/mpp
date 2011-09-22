@@ -37,6 +37,35 @@ sub name {
     return $self->{config}->var("publication","name");
 }
 
+#
+#  return a list of the supported platforms
+#
+sub getPlatforms {
+    my $self=shift;
+    return $self->{config}->list("platforms");
+}
+
+#
+# return the name of a substitue platform for a given context
+#
+sub platformSubstitution {
+    my $self=shift;
+    my $name=shift;
+    my $usecase=shift;
+
+    my @keys=qw(platform);
+    if( defined $usecase && $usecase ne "" ) {
+        push @keys,$usecase."Platform";
+    }
+    foreach my $key (@keys) {
+        my $pname=$self->{config}->var("platform::$name",$key);
+        if( defined $pname ) {
+            return $pname;
+        }
+    }
+    return $name;
+}
+
 #sub releaseLevels {
 #    my $self=shift;
 #    return @($self->{releases});
