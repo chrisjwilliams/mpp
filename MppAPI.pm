@@ -92,6 +92,12 @@ sub defaultPublication {
     return  $self->{publication};
 }
 
+sub setPublication {
+    my $self=shift;
+    my $pub=shift;
+    $self->{publication}=$self->getPublicationManager()->getPublication($pub), if defined ( $pub );
+}
+
 sub expandGlobals {
     my $self=shift;
     my $string=shift;

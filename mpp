@@ -58,6 +58,9 @@ while ( $ARGV[0]=~/^-(.*)/ ) {
         }
         exit 0;
     }
+    elsif ( $arg eq "pub" || $arg eq "p" ) {
+        $::publicationContext=shift @ARGV;
+    }
     elsif ( $arg eq "help" || $arg eq "h" ) {
         usage();
         exit 0;
@@ -109,6 +112,7 @@ sub usage {
     }
     print "\nOptions:\n";
     print "\t-c : specify alternative projects resource directory\n";
+    print "\t-pub -p publication : specify the publication context\n";
     print "\t-config : display config information\n";
     print "\t-verbose -v class: set verbose mode on the specified class\n";
     print "\t-help -h : display this info\n";
@@ -182,6 +186,9 @@ sub new_object {
     bless $self, $class;
     $config->setVar("mpp","baseDir", $base);
     $self->{api}=new MppAPI($FindBin::RealBin, $config);
+    if( defined $::publicationContext) {
+        $self->{api}->setPublication($::publicationContext);
+    }
     return $self;
 }
 
@@ -340,7 +347,7 @@ sub help_login
     print "login to a terminal on the specified machine\n";
 }
 
-sub login 
+sub login
 {
     my $self=shift;
     my $platform=shift;
