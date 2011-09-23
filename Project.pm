@@ -188,7 +188,7 @@ sub build {
 
     if( $#platforms <= 0 )
     {
-        @platforms=$self->platforms();
+        @platforms=$self->platforms("build");
     }
     # -- build custom dependencies
     my $report;
@@ -223,7 +223,7 @@ sub test {
 
     if( $#platforms <= 0 )
     {
-        @platforms=$self->platforms();
+        @platforms=$self->platforms("test");
     }
     return $self->{managers}{test}->execute( @platforms );
 }
@@ -508,7 +508,19 @@ sub removePlatforms {
 sub platforms {
     my $self=shift;
     if( ! defined $self->{platforms} ) {
-        @{$self->{platforms}} = $self->{api}->getContextualisedPlatforms( $self->{context}, $self->{config}->list("platforms"));
+        # -- get the configuration list
+        my @platforms=$self->{config}->list("platforms");
+        my @contextplatforms;
+        # -- find any substitutes from the publication
+        if( $self->{publication} ) {
+            foreach my $p ( @platforms ) {
+                push @contextplatforms, $self->{publication}->platformSubstitution($p, @_);
+            }
+        }
+        else {
+            @contextplatforms=@platforms;
+        }
+        @{$self->{platforms}}=$self->{api}->getContextualisedPlatforms( $self->{context}, @contextplatforms);
     }
     return @{$self->{platforms}};
 

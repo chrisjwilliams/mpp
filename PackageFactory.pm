@@ -117,6 +117,7 @@ sub _loadPlatformData {
     my $self=shift;
     my $platform=shift;
 
+    # load data from the type definition
     if( ! defined $self->{packdb}{$platform} ) {
         my $db=$self->{config}->var("packages", "database");
         my @names;
@@ -134,7 +135,10 @@ sub _loadPlatformData {
         }
         my @dbs=$self->{dataPath}->find(@names);
         $self->verbose("Loading Platform data from @dbs");
-        $self->{packdb}{$platform}=new INIConfig(reverse @dbs);
+        my $platINI=$platform->{config}->breakout( qr/^pack::.+?/ms );
+        $self->{packdb}{$platform}=new INIConfig(reverse @dbs );
+        $self->{packdb}{$platform}->merge($platINI); # platform specific packages override all else
     }
+
     return $self->{packdb}{$platform};
 }
