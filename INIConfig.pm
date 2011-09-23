@@ -89,7 +89,8 @@ sub breakout {
     my $reducer=shift;
     my $clone=new INIConfig();
     foreach my $section ( $self->sections($pat) ) {
-         (my $reduced=$section)=~s/$reducer//;
+         my $reduced=$section;
+         if( defined $reducer) { $reduced=~s/$reducer//; }
          $clone->mergeSection($reduced,$self, $section);
     }
     return $clone;
@@ -378,7 +379,7 @@ sub readFile {
             next;
         }
         # - simple variable setting
-        if ( $line=~/(.+?)\s*=\s*(.+)\s*$/o ) {
+        if ( $line=~/(.+?)\s*=\s*(.*)\s*$/o ) {
             my $var=$1;
             my $val=$2;
             if ( $val=~/^\s*"(.+)\"\s*$/o ) {
