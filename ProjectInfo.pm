@@ -61,6 +61,17 @@ sub new {
     return $self;
 }
 
+sub setBuildProcedure {
+    my $self=shift;
+    $self->{procs}{"build"}=shift;
+}
+
+sub getProcedure {
+    my $self=shift;
+    my $step=shift;
+    return $self->{procs}{$step};
+}
+
 sub type {
     my $self=shift;
     return $self->{type};
