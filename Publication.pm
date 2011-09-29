@@ -18,6 +18,7 @@ use Server;
 use RemoteFileHandle;
 use File::Copy;
 use Manglers::Base;
+use PackageVersion;
 use Report;
 1;
 
@@ -283,16 +284,66 @@ sub createInstallPackages {
 #    }
 }
 
-sub installPackage {
+#
+# return the latest published version at the specified release level
+#
+sub latestPublishedVersion {
     my $self=shift;
     my $platform=shift;
     my $release=shift;
 
-    if( ! defined $self->{package}{$release}{$platform} )
-    {
-        $self->{package}{$release}{$platform}="something";
+    my $latest=PackageVersion->new();
+    my @repos=$self->getPlatformRepositories($platform);
+    for( @repos ) {
+       my $version=$_->latestPublishedVersion();
+       if( $version > $latest ) {
+           $latest=$version;
+       }
     }
-    return $self->{package}{$release}{$platform};
+    return $latest;
+}
+
+#
+# generate repository installation packages
+#
+sub generateInstallationPackage {
+    my $self=shift;
+    my $platform=shift;
+    my $release=shift;
+    my @repos=@_;
+
+    if( ! @repos ) {
+        @repos=$self->getPlatformRepositories($platform);
+    }
+    if( ! defined $self->{package}{$release}{$platform} ) {
+        foreach my $repo ( @repos )
+        {
+            my $projectname=$repo->name()."_repository";
+            my $pkgname=$projectname."_".$platform->platform()."_".$platform->arch()."_".$release;
+            my $version=$self->latestPublishedVersion($pkgname, $platform, $release);
+            if( ! defined $version ) { $version="0.0.0"; }
+
+            # -- generate a suitable project file
+            my $installer=$platform->getInstaller();
+            my $pm=$self->{api}->projectManager();
+            my $project=$pm->getProject($projectname, $version, $self);
+            if( ! defined $pm ) {
+               my $config=INIConfig->new();
+               $project=$pm->newProject( $projectname, $version, $config, $self );
+            }
+
+            # -- setup a buildable Project
+            $project->{config}->setVar("project","maintainer",$self->{config}->var("publication","maintainer"));
+            $project->{config}->setVar("project","licence",$self->{config}->var("publication","licence"));
+            $project->setBuildProcedure($installer->addRepositoryProcedure());
+            if( ! $project->isBuilt() ) {
+                my $report=$project->build();
+                die $report, if( $report->failed() );
+            }
+            push @{$self->{package}{$release}{$platform}},$installer->binaryPackageFiles();
+        }
+    }
+    return @{$self->{package}{$release}{$platform}};
 }
 
 sub createPublicationInfoHtml {

@@ -56,24 +56,6 @@ sub addRepositoryProcedure {
     return $proc;
 }
 
-#sub addRepository {
-#    my $self=shift;
-#    my $platform=shift;
-#    my $repo=shift;
-#    my $release=shift;
-#
-#    my $name=$repo->name()."_".$release;
-#    my $mppconf="/etc/apt/sources.list.d/$name.list";
-#    require RemoteFileHandle;
-#    my $fh=RemoteFileHandle->new($platform);
-#    $fh->open(">$mppconf");
-#    foreach my $ref ( $repo->repositoryRefs( $platform->platform(), $release ) )
-#    {
-#       print $fh $ref,"\n";
-#    }
-#    $fh->close();
-#}
-
 sub removeRepository {
     my $self=shift;
     my $repo=shift;

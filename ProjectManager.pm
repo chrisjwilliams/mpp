@@ -112,9 +112,8 @@ sub newProject {
     my $self=shift;
     my $name=shift;
     my $version=shift;
-    my $licence=shift;
-
-    $licence = "BSD", if( ! defined $licence );
+    my $config=shift || new INIConfig;
+    my $publication=shift || $self->{api}->defaultPublication();
 
     require Project;
     require ProjectInfo;
@@ -123,11 +122,9 @@ sub newProject {
         my $prjloc=$self->{loc}."/".$name."/".$version;
         if ( ! -d $prjloc ) {
             File::Path::mkpath($prjloc, 0, 0755) or die "Unable to create dir $prjloc $!\n";
-            my $config=INIConfig->new();
-            $config->setVar("project","licence", $licence );
             $config->saveToFile( $prjloc."/config.ini" );
             my $pinfo=ProjectInfo->new($config,$prjloc, $name, $version);
-            my $pj=Project->new($config, $self->{api}, $pinfo);
+            my $pj=Project->new($config, $self->{api}, $pinfo, $publication);
             $rv=$pj; # return a project object
         }
     }

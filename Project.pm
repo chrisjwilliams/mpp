@@ -67,7 +67,7 @@ sub new {
     # setup the execution steps
     $self->{managers}{build} = new BuildStep("build", $self->{context},$self->{work}, $self, $self->{api} );
     $self->{managers}{test} = new TestStep("test", $self->{context},$self->{work} , $self);
-    $self->{managers}{test}->depends($self->{managers}{build});
+    #$self->{managers}{test}->depends($self->{managers}{build});
 
 
     return $self;
@@ -400,6 +400,10 @@ sub buildPlatformVariant {
     $self->verbose("building variant $name in $workspace");
     # -- if no variants are defined, consider this variant to be a buildable project
     if( $#variants < 0 ) {
+        my $proc=$variant->getProcedure("build");
+        if( defined $proc ) {
+            $proc->execute( $log, $platform->workDir()."/".$workspace );
+        }
         if( $variant->buildable() ) {
             $self->verbose("variant $name in $workspace is buildable");
             if( ! defined $self->{built}{$name}{$platform} ) {
@@ -526,6 +530,11 @@ sub platforms {
 
 }
 
+sub getPlatforms {
+    my $self=shift;
+    return $self->{api}->getContextualisedPlatforms( $self->{context},@_);
+}
+
 sub hasPlatform {
     my $self=shift;
     my $name=shift;
@@ -647,6 +656,7 @@ sub _testPlatform {
     my $platform=shift;
     my $log = shift;
 
+    $self->verbose("testing on platform ".$platform->name());
     my $rv=new Report;
     my $localwork=$self->_localwork($platform);
 
@@ -732,6 +742,7 @@ sub unpublishPlatform {
     my @publishers=@_;
 
     # -- send to the publisher
+    #$platform=_platformSubstitute($platform);
     my @packs=$self->getPackages($platform);
     if( $#packs >= 0 ) {
         foreach my $publisher ( @publishers ) {
@@ -750,6 +761,24 @@ sub unpublishPlatform {
     }
 }
 
+sub _platformSubstitute {
+    my $self=shift;
+    my $platform=shift; # Platform object
+    if( defined $self->{publication} ) {
+        my $pname=$platform->name();
+        my $sname=$self->{publication}->platformSubstitution($pname);
+        if( $pname ne $sname ) {
+            $self->verbose("substituting platform $sname for $pname");
+            my @platforms=$self->getPlatforms($sname);
+            $platform=$platforms[0];
+            if( ! defined $platform ) {
+                die("substitue platform $sname does not exist");
+            }
+        }
+    }
+    return $platform;
+}
+
 sub publishPlatform {
     my $self=shift;
     my $platform=shift;
@@ -758,6 +787,8 @@ sub publishPlatform {
 
     # -- send to the publisher
     my $report=new Report;
+    # -- determine any platform substitutes
+    #$platform=_platformSubstitute($platform);
     my @packs=$self->getPackages($platform);
     if( $#packs >= 0 ) {
         foreach my $publisher ( @publishers ) {
