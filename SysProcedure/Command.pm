@@ -41,6 +41,18 @@ sub execute {
     }
 }
 
+sub commands {
+    my $self=shift;
+    my $root=shift;
+
+    my $env=Env->new({root=>"$root"});
+    for(@{$self->{cmds}}) {
+        my $cmd=$env->expandString($_);
+        push @cmds, $cmd;
+    }
+    return @cmds;
+}
+
 sub addCommand {
     my $self=shift;
     push @{$self->{cmds}}, @_;
