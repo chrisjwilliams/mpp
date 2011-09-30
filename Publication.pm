@@ -314,6 +314,10 @@ sub generateInstallationPackage {
 
     if( ! @repos ) {
         @repos=$self->getPlatformRepositories($platform);
+        if( ! @repos ) {
+            # -- no repositories associated with this platform
+            return ();
+        }
     }
     if( ! defined $self->{package}{$release}{$platform} ) {
         foreach my $repo ( @repos )

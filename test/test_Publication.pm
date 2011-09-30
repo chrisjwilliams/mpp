@@ -27,7 +27,8 @@ sub new {
 }
 
 sub tests {
-    return qw( test_init test_publishNoDeps test_publishWithDeps test_platformSubstitution);
+    return qw( test_init test_publishNoDeps test_publishWithDeps 
+               test_platformSubstitution test_repositoryInstallPackage );
 }
 
 sub getAPI {
@@ -199,5 +200,34 @@ sub test_platformSubstitution {
         # - other usecase
         my $res3=$pub->platformSubstitution($name, "other");
         die("Expecting name to be unchanged : got $res3"), if($res3 ne $name );
+    }
+}
+
+sub test_repositoryInstallPackage {
+    my $self=shift;
+    
+    my $config = new INIConfig;
+    my $pub=$self->getPublicationObject($self->getAPI(), $config);
+    $pub->setVerbose(1);
+    my $release="unittest";
+    my $platform=new TestUtils::TestPlatform( $self->{tmpdir} );
+    {
+        # Use Case:
+        # call on non-existing repository
+        # Expect:
+        # throw with suitable error message
+        eval {
+            $pub->generateInstallationPackage($platform, $release);
+        };
+        die "expecting throw when the repository does not exist", if( !$@ );
+    }
+    my @packagelist=qw(testrepository_repo);
+    {
+        # Use Case:
+        # call on existing repository, packages already exist, but not published
+        # Expect:
+        # return list of packages
+        my @packs=$pub->generateInstallationPackage($platform, $release);
+        die "expecting @packagelist, got @packs", if( "@packagelist" ne "@packs" );
     }
 }
