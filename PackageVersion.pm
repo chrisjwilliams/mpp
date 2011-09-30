@@ -24,6 +24,12 @@ sub new {
     return $self;
 }
 
+sub defined {
+    my $self=shift;
+    return defined $self->{string};
+}
+
+
 sub versionString {
     my $self=shift;
     return $self->{string};

@@ -170,7 +170,7 @@ sub setPlatformStatus {
 
 sub platformStatus {
     my $self=shift;
-    my $platform = shift;
+    my $platform = shift || croak("platformStatus: requires a platfrom");
 
     return $self->_platformINI()->var("platform::".$platform->name(),"status") || "none";
 }

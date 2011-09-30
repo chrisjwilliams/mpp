@@ -152,9 +152,18 @@ sub getProjectManager {
         foreach my $dir ( $self->{config}->list("projectLocation") ) {
             $self->{project}->addManager(ProjectManager->new($self->{config}, $self, $dir) );
         }
-        #$self->{project}=ProjectManager->new($self->{config}, $self, $self->{prjloc});
     }
     return $self->{project};
+}
+
+sub getInternalProjectManager {
+    require ProjectManager;
+    my $self=shift;
+    if( ! defined $self->{hiddenpm} ) {
+        # add a project manager for mpp internal working auto-generated projects
+        $self->{hiddenpm}=ProjectManager->new($self->{config}, $self, $self->{workdir}."/Projects");
+    }
+    return $self->{hiddenpm};
 }
 
 sub getPlatformManager {

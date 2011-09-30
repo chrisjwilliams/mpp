@@ -19,6 +19,7 @@ use RemoteFileHandle;
 use File::Copy;
 use Manglers::Base;
 use PackageVersion;
+use PublicationInfo;
 use Report;
 1;
 
@@ -41,9 +42,14 @@ sub name {
 #
 #  return a list of the supported platforms
 #
-sub getPlatforms {
+sub getPlatformList {
     my $self=shift;
     return $self->{config}->list("platforms");
+}
+
+sub getPlatforms {
+    my $self=shift;
+    return $self->{api}->getPlatforms($self->getPlatformList());
 }
 
 #
@@ -67,15 +73,16 @@ sub platformSubstitution {
     return $name;
 }
 
-#sub releaseLevels {
-#    my $self=shift;
-#    return @($self->{releases});
-#}
+sub releaseLevels {
+    my $self=shift;
+    return $self->{config}->list("levels");
+}
 
 #sub publicReleaseLevels {
 #    my $self=shift;
 #    return @($self->{releases});
 #}
+
 
 sub platforms {
     my $self=shift;
@@ -150,7 +157,7 @@ sub unpublish {
     my $project=shift;
     my @platforms=@_;
 
-    if( $#platforms < 0 ) { @platforms=$project->platforms() };
+    if( $#platforms < 0 ) { @platforms=$project->getPlatforms() };
 
     my $report=new Report;
     foreach my $platform ( @platforms ) {
@@ -181,7 +188,7 @@ sub publish {
     my $project=shift;
     my @platforms=@_;
 
-    if( $#platforms < 0 ) { @platforms=$project->platforms() };
+    if( $#platforms < 0 ) { @platforms=$project->getPlatforms() };
 
     my $report=new Report;
     # -- ensure all dependencies are available inside this publication
@@ -265,20 +272,44 @@ sub isPublished {
     return 0;
 }
 
+sub infoConsumers {
+    my $self=shift;
+    if( ! defined $self->{infos} ) {
+        @{$self->{infos}}=(); # TODO
+    }
+    return @{$self->{infos}};
+}
+
 sub setupInstallers {
     my $self=shift;
     my @repos=@_;
-    die("createInstallPackages: not yet implemented");
 
     if(! @repos) {
         @repos=$self->repositories();
         return, if( !@repos); # no repositories
     }
+    my $pubinfo=PublicationInfo->new();
     foreach my $repo ( @repos ) {
-        foreach my $platform ( $self->platforms() ) {
-            # -- generate an installation package for each platform
-            # -- 
+        my $pub={}; # keep track of published projects
+        foreach my $release ( $self->releaseLevels() ) {
+            foreach my $platform ( $self->getPlatforms() ) {
+                # -- generate an installation package for each platform type
+                my $project=$self->installationPackageProject($repo, $release, $platform);
+                #if( ! defined $pub->{$project} ) {
+                    # publish any new projects
+                #    $project->publish($release);
+                #    $pub->{$project}=1;
+                #    $pubinfo->addInstaller($project);
+                #}
+                # -- create an association between this package and platform in
+                #    publication information
+                $pubinfo->addPlatform($platform, $project);
+            }
         }
+    }
+    # --- pass the publication info to any information consumers
+    foreach my $generator ( $self->infoConsumers() ) {
+        $generator->execute($pubinfo);
     }
 }
 
@@ -287,13 +318,14 @@ sub setupInstallers {
 #
 sub latestPublishedVersion {
     my $self=shift;
+    my $pkg=shift;
     my $platform=shift;
     my $release=shift;
 
     my $latest=PackageVersion->new();
     my @repos=$self->getPlatformRepositories($platform);
     for( @repos ) {
-       my $version=$_->latestPublishedVersion();
+       my $version=$_->latestPublishedVersion($pkg);
        if( $version > $latest ) {
            $latest=$version;
        }
@@ -304,48 +336,53 @@ sub latestPublishedVersion {
 #
 # generate repository installation packages
 #
-sub generateInstallationPackage {
+sub installationPackageProject {
     my $self=shift;
-    my $platform=shift;
+    my $repoName=shift;
     my $release=shift;
-    my @repos=@_;
+    my $platform=shift;
 
-    if( ! @repos ) {
-        @repos=$self->getPlatformRepositories($platform);
-        if( ! @repos ) {
-            # -- no repositories associated with this platform
-            return ();
+    my $repo=$self->getRepository($repoName);
+    if( ! defined $self->{package}{$release}{$repoName}{$platform} ) {
+        # -- check if there is a no-arch specific package available for a similar platform
+        foreach my $plat ( keys %{$self->{package}{$release}{$repoName}} ) {
+             # TODO check for noarch()
+             # currently assumes that there is a noarch specific platform available 
+             if( $plat->platform() eq $platform->platform() ) {
+                 $self->{package}{$release}{$repoName}{$platform}=$self->{package}{$release}{$repoName}{$plat};
+                 return $self->{package}{$release}{$repoName}{$platform};
+             }
         }
-    }
-    if( ! defined $self->{package}{$release}{$platform} ) {
-        foreach my $repo ( @repos )
-        {
-            my $projectname=$repo->name()."_repository";
-            my $pkgname=$projectname."_".$platform->platform()."_".$platform->arch()."_".$release;
-            my $version=$self->latestPublishedVersion($pkgname, $platform, $release);
-            if( ! defined $version ) { $version="0.0.0"; }
 
-            # -- generate a suitable project file
-            my $installer=$platform->getInstaller();
-            my $pm=$self->{api}->projectManager();
-            my $project=$pm->getProject($projectname, $version, $self);
-            if( ! defined $pm ) {
-               my $config=INIConfig->new();
-               $project=$pm->newProject( $projectname, $version, $config, $self );
-            }
+        # -- generate a suitable project to build a package
+        my $projectname=$repoName."_".$platform->platform()."_repository";
+        #my $version=$self->latestPublishedVersion($pkgname, $platform, $release);
+        #if( ! $version->defined() ) { $version=new PackageVersion("0.0.0"); }
 
-            # -- setup a buildable Project
-            $project->{config}->setVar("project","maintainer",$self->{config}->var("publication","maintainer"));
-            $project->{config}->setVar("project","licence",$self->{config}->var("publication","licence"));
-            $project->setBuildProcedure($installer->addRepositoryProcedure());
-            if( ! $project->isBuilt() ) {
-                my $report=$project->build();
-                die $report, if( $report->failed() );
-            }
-            push @{$self->{package}{$release}{$platform}},$installer->binaryPackageFiles();
+        # -- generate a suitable project file
+        my $installer=$platform->_getPackageManager();
+        my $pm=$self->{api}->getInternalProjectManager();
+        my $project=$pm->getProject($projectname, $release, $self);
+        if( ! defined $project ) {
+            my $config=INIConfig->new();
+            $project=$pm->newProject( $projectname, $release, $config, $self );
         }
+
+        # -- setup a buildable Project
+        $project->{config}->setVar("project","maintainer",$self->{config}->var("publication","maintainer"));
+        my $licence=$self->{config}->var("publication","licence");
+        die "please define a licence to use for the repository in [publication]", if( ! defined $licence );
+        $project->{config}->setVar("project","licence",$licence);
+print "version=", $project->version(),"\n";
+print "project=", $project->name(),"\n";
+        $project->setBuildProcedure($platform, $installer->addRepositoryProcedure($repo,$release));
+        if( ! $project->isBuilt($platform) ) {
+            my $report=$project->buildPlatform($platform);
+            die $report, if( $report->failed() );
+        }
+        $self->{package}{$release}{$repo}{$platform}=$project;
     }
-    return @{$self->{package}{$release}{$platform}};
+    return $self->{package}{$release}{$repo}{$platform};
 }
 
 sub createPublicationInfoHtml {

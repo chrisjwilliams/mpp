@@ -329,13 +329,15 @@ sub installers
 {
     my $self=shift;
     my $pub=shift;
+    if( ! defined $pub ) { print "installers : publication not specified\n"; exit 1; }
     my $pf = $self->{api}->getPublicationManager();
     my $publication=$pf->getPublication($pub);
     if( defined $publication ) {
         $publication->setupInstallers(@_);
     }
     else {
-        usage("unknown publication $pub");
+        print "unknown publication \"$pub\"\n";
+        exit 1;
     }
 }
 

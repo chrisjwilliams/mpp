@@ -11,6 +11,7 @@
 package Publishers::Base;
 use strict;
 use FileHandle;
+use PackageVersion;
 use RemoteFileHandle;
 use File::Copy;
 use Package::Package;
@@ -42,6 +43,11 @@ sub verbose {
             print $self->type(),": ",$_,"\n";
         }
     }
+}
+
+sub latestPublishedVersion {
+     my $self=shift;
+     return PackageVersion->new();
 }
 
 sub type {

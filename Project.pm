@@ -182,6 +182,12 @@ sub testFailed {
     return $rv;
 }
 
+sub setBuildProcedure {
+    my $self=shift;
+    my $platform=shift;
+    $self->{buildproc}{$platform->name()}=shift;
+}
+
 sub build {
     my $self=shift;
     my @platforms=@_;
@@ -201,8 +207,8 @@ sub build {
 
 sub statusPlatform { 
     my $self=shift;
-    my $type=shift||die("must specify status type");
-    my $platform=shift;
+    my $type=shift||croak("must specify status type");
+    my $platform=shift||croak("statusPlatform: must specify a platform");
     return $self->{managers}{$type}->platformStatus($platform);
 }
 
@@ -400,7 +406,13 @@ sub buildPlatformVariant {
     $self->verbose("building variant $name in $workspace");
     # -- if no variants are defined, consider this variant to be a buildable project
     if( $#variants < 0 ) {
+        # -- configuration file procedures
         my $proc=$variant->getProcedure("build");
+        if( defined $proc ) {
+            $proc->execute( $log, $platform->workDir()."/".$workspace );
+        }
+        # -- internal project Procedures
+        $proc=$self->{buildproc}{$platform->name()};
         if( defined $proc ) {
             $proc->execute( $log, $platform->workDir()."/".$workspace );
         }
@@ -759,6 +771,12 @@ sub unpublishPlatform {
             }
         }
     }
+}
+
+sub isBuilt {
+    my $self=shift;
+    my $platform=shift;
+    return $self->statusPlatform("build", $platform);
 }
 
 sub _platformSubstitute {
