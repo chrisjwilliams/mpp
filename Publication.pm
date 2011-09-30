@@ -265,23 +265,21 @@ sub isPublished {
     return 0;
 }
 
-sub createInstallPackages {
+sub setupInstallers {
     my $self=shift;
-    my @platforms=@_;
+    my @repos=@_;
     die("createInstallPackages: not yet implemented");
 
-#    foreach my $repo ( @repofiles ) {
-#    foreach my $repo ( $self->repositories() ) {
-#        my $inicfg=INIConfig->new();
-#        $inicfg->setVar("project","name", $publisher->name());
-#        $inicfg->setVar("project","version", 0.0);
-#        $inicfg->setList("install",@repofiles);
-#        my $info=new ProjectInfo( $inicfg );
-#        my $project=new Project->($self->{api}, $info, $self);
-#        $project->setPlatforms(@platforms);
-#        $project->build();
-#        $project->packages($publisher->arch());
-#    }
+    if(! @repos) {
+        @repos=$self->repositories();
+        return, if( !@repos); # no repositories
+    }
+    foreach my $repo ( @repos ) {
+        foreach my $platform ( $self->platforms() ) {
+            # -- generate an installation package for each platform
+            # -- 
+        }
+    }
 }
 
 #

@@ -25,7 +25,7 @@ $::platformloc=$prjbase."/Platforms"; # default
 $::publoc=$prjbase."/Publications"; # default
 $::configPath="/etc:$ENV{HOME}/.:$prjbase";
 $::configDirPath="/etc/mpp.d:$prjbase/config.d";
-my @allowedcmds=qw(list new build install uninstall test run halt start login status publish unpublish publisher publications platforms platform);
+my @allowedcmds=qw(list new build install uninstall test run halt start login status publish unpublish publisher installers publications platforms platform);
 
 # ----------------- command parsing --------------------
 # -- parse options
@@ -104,6 +104,7 @@ if ( $found == 0 ) {
 } # end if( defined ARGV[0]
 
 sub usage {
+    my $msg=shift;
     print "Usage:\n\t";
     print "mpp [options] cmd [help]\n\n";
     print "Allowed Commands:\n";
@@ -120,6 +121,10 @@ sub usage {
     print "Additional help is available for each command with the help keyword\n";
     print "\te.g.\n\t\t mpp list help\n";
     print "\n";
+    if( defined $msg ) {
+        print $msg,"\n";
+        exit 1;
+    }
 }
 
 #
@@ -307,6 +312,31 @@ sub list
         print $p->name()." ".$p->version()."\n";
     }
     return;
+}
+
+sub help_installers
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "installers <publication> [repository1,repository2,...]\n";
+    print "Decription:\n\t";
+    print "create and publish installation packages for the specified publication\n";
+    print "\tPackages for every relevant repository will be generated, \n";
+    print "\tunless explicit repositories are specified\n";
+}
+
+sub installers 
+{
+    my $self=shift;
+    my $pub=shift;
+    my $pf = $self->{api}->getPublicationManager();
+    my $publication=$pf->getPublication($pub);
+    if( defined $publication ) {
+        $publication->setupInstallers(@_);
+    }
+    else {
+        usage("unknown publication $pub");
+    }
 }
 
 sub help_install
