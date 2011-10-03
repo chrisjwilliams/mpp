@@ -112,11 +112,12 @@ sub build {
     $self->setup($downloadDir, $log);
 
     if( ! $self->{config}->itemExists("options","no_build") ) {
+        # -- perform the build
+       print $log "Building......\n";
        my @cmds=$self->{builder}->buildCommands();
        if( @cmds )
        {
            my $cmd="cd $srcDir && ".(join "&&", @cmds), if ( defined $srcDir && $srcDir ne "" );
-           print $log "Building......\n";
            $rv=$self->remote($log,$cmd); 
        }
     }
@@ -129,7 +130,9 @@ sub build {
         my $deb=$self->{builder}->dir($sub->name());
     #    $self->contentIteratorProject( $sub,"files", \&_installBuild, $deb );
     #    $self->contentIteratorProject( $sub,"links", \&_installLink, $deb );
-        $self->cleanLinks($deb, $log);
+        if( $project->buildable() ) {
+            $self->cleanLinks($deb, $log);
+        }
         $self->_control($sub, $deb, $log);
         my $name=$self->_packageFile($sub);
         print $log "Creating deb package ", $name," in $deb\n";

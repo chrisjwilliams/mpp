@@ -44,5 +44,5 @@ sub executeStep {
         }
     }
     # -- now build the actual project
-    return $self->{project}->buildPlatform($platform, $log);
+    return $self->{project}->_buildPlatform($platform, $log);
 }

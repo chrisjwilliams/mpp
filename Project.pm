@@ -192,7 +192,7 @@ sub build {
     my $self=shift;
     my @platforms=@_;
 
-    if( $#platforms <= 0 )
+    if( $#platforms < 0 )
     {
         @platforms=$self->platforms("build");
     }
@@ -234,7 +234,7 @@ sub test {
     return $self->{managers}{test}->execute( @platforms );
 }
 
-sub buildPlatform {
+sub _buildPlatform {
     my $self=shift;
     my $platform=shift;
     my $log = shift;

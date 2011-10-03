@@ -28,7 +28,7 @@ sub new {
 
 sub tests {
     return qw( test_init test_publishNoDeps test_publishWithDeps 
-               test_platformSubstitution test_repositoryInstallPackage );
+               test_platformSubstitution );
 }
 
 sub getAPI {

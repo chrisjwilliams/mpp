@@ -50,7 +50,7 @@ sub new {
     if( ! defined $licence ) {
         $licence=$self->{config}->var("project","license"); # american spelling?
     }
-    warn( "licence conditions need to be defined for this project (".($self->{name})." ".($self->{version}).")"), if( ! defined $licence );
+    #warn( "licence conditions need to be defined for this project (".($self->{name})." ".($self->{version}).")"), if( ! defined $licence );
     $self->{licence}=$licence;
 
     # -- set up expansion variables

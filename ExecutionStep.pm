@@ -56,7 +56,7 @@ sub executeStep {
     my $self = shift;
     my $platform = shift;
     my $log = shift;
-    exit "Undefined step: Please inherit and override the executeStep() method";
+    die "Undefined step: Please inherit and override the executeStep() method";
 }
 
 sub execute {

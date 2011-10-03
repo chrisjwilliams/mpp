@@ -21,6 +21,7 @@ use Manglers::Base;
 use PackageVersion;
 use PublicationInfo;
 use Report;
+use Carp;
 1;
 
 sub new {
@@ -119,7 +120,7 @@ sub setupRepositories {
 
     my @repos=$self->getPlatformRepositories($platform);
     for( @repos ) {
-        print $log "adding repository ",$_->name(), " release: $release\n";
+        print $log "adding repository ",$_->name(), " release: $release\n",if(defined $log);
         $platform->addPackageRepository($log,$_,$release);
     }
     return @repos;
@@ -373,13 +374,13 @@ sub installationPackageProject {
         my $licence=$self->{config}->var("publication","licence");
         die "please define a licence to use for the repository in [publication]", if( ! defined $licence );
         $project->{config}->setVar("project","licence",$licence);
-print "version=", $project->version(),"\n";
-print "project=", $project->name(),"\n";
+#print "project=", $project->name(),"\n";
+#print "version=", $project->version(),"\n";
         $project->setBuildProcedure($platform, $installer->addRepositoryProcedure($repo,$release));
-        if( ! $project->isBuilt($platform) ) {
-            my $report=$project->buildPlatform($platform);
+#        if( ! $project->isBuilt($platform) ) {
+            my $report=$project->build($platform);
             die $report, if( $report->failed() );
-        }
+#        }
         $self->{package}{$release}{$repo}{$platform}=$project;
     }
     return $self->{package}{$release}{$repo}{$platform};

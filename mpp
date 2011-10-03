@@ -333,12 +333,21 @@ sub installers
     my $pf = $self->{api}->getPublicationManager();
     my $publication=$pf->getPublication($pub);
     if( defined $publication ) {
-        $publication->setupInstallers(@_);
+        local $@;
+        eval {
+            $publication->setupInstallers(@_);
+        };
+        if($@) {
+            my $report=$@;
+            print "installers failed with :\n", join("\n",$report->stderr()),"\n";
+            return $report->returnValue();
+        }
     }
     else {
         print "unknown publication \"$pub\"\n";
         exit 1;
     }
+    return 0;
 }
 
 sub help_install
