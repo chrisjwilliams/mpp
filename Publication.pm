@@ -105,6 +105,7 @@ sub getPlatformRepositories {
     foreach my $candidate ( @candidates ) {
         foreach my $nm ( $self->repositories() ) {
             if ( $candidate->name() eq $nm ) {
+                $self->verbose("getPlatformRepositories(".($platform->name()).") : $nm\n");
                 push @repos, $candidate;
             }
         }

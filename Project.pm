@@ -35,6 +35,7 @@ use BuildStep;
 use TestStep;
 use Context;
 use Report;
+use Package::Package;
 use strict;
 1;
 
@@ -874,8 +875,14 @@ sub _unpublishPlatform {
     my $platform=shift;
     my $release=shift;
 
-    my @publishers=$self->_getPublisher($platform);
-    $self->unpublishPlatform($platform,$release,@publishers);
+    my @publishers;
+    if( ! defined $self->{publication} ) {
+        push @publishers, $self->_getPublisher($platform);
+        $self->unpublishPlatform($platform,$release,@publishers);
+    }
+    else {
+        $self->{publication}->unpublish($release, $self, $platform);
+    }
 #    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
 #    foreach my $publisher ( @publishers ) {
 #        foreach my $pack ( $packager->packageFiles() ) {

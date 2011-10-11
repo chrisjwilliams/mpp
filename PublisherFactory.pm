@@ -156,22 +156,26 @@ sub getPublisherType {
     my $self=shift;
     my $type=shift;
 
-    my $name="";
+    my @names;
     # -- look through our defined publishers for one of the specified type
     foreach my $pub ( $self->publishers() )
     {
         my $key="repository::$pub";
         if($self->{config}->var($key, "type") eq $type ) {
-           $name=$pub; 
-           last, if( defined $self->{config}->var($key,"default") );
+           $self->verbose("getPublisherType($type) : found $pub");
+           push @names,$pub;
         }
     }
-    if( $name eq "" )
+    if( $#names == -1  )
     {
         return undef;
         #die "no publisher of type '$type' has been defined";
     }
-    return $self->getPublisher($name);
+    my @rv;
+    for(@names) {
+        push @rv, $self->getPublisher($_);
+    }
+    return @rv;
 }
 
 sub getPlatformPublishers {
@@ -190,8 +194,8 @@ sub getPlatformPublishers {
         for ( @repTypes ) {
             $self->verbose("looking for server type $_");
             if( $self->typeExists( $_ ) ) {
-                my $pub=$self->getPublisherType( $_ );
-                push @publishers, $pub, if(defined $pub);
+                my @pub=$self->getPublisherType( $_ );
+                push @publishers, @pub;
             }
             else {
                 die("Publisher type '$_' does not exist (available types:".(join( " ", $self->types()))."\n");
