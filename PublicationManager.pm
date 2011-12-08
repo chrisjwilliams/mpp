@@ -43,15 +43,25 @@ sub getPublication {
     my $name=shift;
     if ( defined $name ) {
        if( ! defined $self->{pubs}{$name} ) {
-            my ($loc)=$self->{pubPath}->find($name);
-            if( defined $loc ) {
-                $self->verbose( "initialising $name from file :".$loc );
-                my $config=INIConfig->new($loc);
-                $config->mergeSection("verbose", $self->{config} );
-                $self->{pubs}{$name}=new Publication($config, $self->{api});
+            if( $name ne "0" ) {
+                # a named publication
+                my ($loc)=$self->{pubPath}->find($name);
+                if( defined $loc ) {
+                    $self->verbose( "initialising $name from file :".$loc );
+                    my $config=INIConfig->new($loc);
+                    $config->mergeSection("verbose", $self->{config} );
+                    $self->{pubs}{$name}=new Publication($config, $self->{api});
+                }
+                else {
+                    die "publication \"$name\" does not exist";
+                }
             }
             else {
-                die "publication \"$name\" does not exist";
+                # the NULL publication
+                my $config=INIConfig->new();
+                $config->setVar("publication", "name", "NULL");
+                $config->mergeSection("verbose", $self->{config} );
+                $self->{pubs}{$name}=new Publication($config, $self->{api});
             }
        }
        return $self->{pubs}{$name};
