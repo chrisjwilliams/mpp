@@ -71,7 +71,7 @@ sub filename {
     my $name = join( "/", @_);
     my ($f,$dir) = fileparse($name);
     $dir=$self->{workdir}."/".$dir; 
-    mkpath( $dir ) or die("unable to create dir $dir"), if( ! -d $dir );
+    mkpath( $dir ) or die("Context: unable to create dir $dir"), if( ! -d $dir );
     $f=~s/::/_/g;
     my $file=$dir.$f;
     return $file;
@@ -83,7 +83,7 @@ sub INI_File {
 
     my ($f,$dir) = fileparse($name);
     $dir=$self->{workdir}."/".$dir; 
-    mkpath( $dir ) or die("unable to create dir $dir"), if( ! -d $dir );
+    mkpath( $dir ) or die("Context: unable to create dir $dir"), if( ! -d $dir );
 
     $f=~s/::/_/g;
     my $file=$dir.$f.".ini";

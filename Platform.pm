@@ -480,6 +480,7 @@ sub addPackageRepository {
     my $type=$self->packageManagerType();
     my $manager=$self->_getPackageManager($type);
 
+    $self->verbose("got manager $manager");
     $manager->addRepository(@_);
 }
 

@@ -121,7 +121,9 @@ sub setupRepositories {
 
     my @repos=$self->getPlatformRepositories($platform);
     for( @repos ) {
-        print $log "adding repository ",$_->name(), " release: $release\n",if(defined $log);
+        my $msg="adding repository ".$_->name()." release: $release platform: ".$platform->name();
+        $self->verbose($msg);
+        print $log $msg."\n",if(defined $log);
         $platform->addPackageRepository($log,$_,$release);
     }
     return @repos;

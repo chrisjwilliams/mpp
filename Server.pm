@@ -16,6 +16,7 @@ use MppClass;
 use FileHandle;
 use RemoteFileHandle;
 use File::Copy;
+use Carp;
 our @ISA=qw /MppClass/;
 1;
 
@@ -48,7 +49,7 @@ sub copyFile {
     else {
         foreach my $file ( @_ ) {
             $self->verbose("Copying file '$file' to '$dest'");
-            File::Copy::copy( $file , $dest) or  die("unable to copy file '$file' to $dest : $!");
+            File::Copy::copy( $file , $dest) or  carp("Server: unable to copy file '$file' to $dest : $!");
         }
     }
 }
