@@ -168,11 +168,11 @@ sub test_allfiles {
     my $pinfo=ProjectInfo->new($config, $self->{cfgDir}, "testname", "testversion");
 
     my @files=sort($pinfo->allFiles());
-    my @allExpected=sort(qw(/usr/wibble2 /usr/bin/* ${install::bin}/hello.pl ${install::bin}/subbin/hello.pl ${install::lib}/*.so ${install::lib}/*.a));
+    my @allExpected=sort(qw(/usr/wibble2 /usr/bin ${install::bin}/hello.pl ${install::bin}/subbin/hello.pl ${install::lib}));
     die("installed files expected (@allExpected), got (@files)"), if ( "@allExpected" ne "@files");
     my @excludefiles=sort($pinfo->excludeFiles());
-    my @excludeExpected=sort(qw(${install::lib}/*.a ${install::lib}/*.so));
-    die("installed files expected (@excludeExpected), got (@excludefiles)"), if ( "@excludeExpected" ne "@excludefiles");
+    my @excludeExpected=sort(qw(${install::lib}));
+    die("exclude files expected (@excludeExpected), got (@excludefiles)"), if ( "@excludeExpected" ne "@excludefiles");
 }
 
 sub test_sectionEnvironment {
