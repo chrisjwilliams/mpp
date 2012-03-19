@@ -23,6 +23,7 @@ my $prjbase=$ENV{HOME}."/PackageMaker";
 $::prjloc=$prjbase."/Projects"; # default
 $::platformloc=$prjbase."/Platforms"; # default
 $::publoc=$prjbase."/Publications"; # default
+$::swloc=$prjbase."/Packages"; # default
 $::configPath="/etc:$ENV{HOME}/.:$prjbase";
 $::configDirPath="/etc/mpp.d:$prjbase/config.d";
 my @allowedcmds=qw(list new build install uninstall test run halt start login status publish unpublish publisher installers publications platforms platform);
@@ -54,6 +55,10 @@ while ( $ARGV[0]=~/^-(.*)/ ) {
         }
         print "Platform Directories:\n";
         foreach my $dir ( $config->list("platformLocation") ) {
+            print "\t$dir\n";
+        }
+        print "Software Package Description Directories:\n";
+        foreach my $dir ( $config->list("softwareLocation") ) {
             print "\t$dir\n";
         }
         exit 0;
@@ -159,6 +164,7 @@ sub config {
         $::config->setList("platformLocation", $::platformloc);
         $::config->setList("projectLocation", $::prjloc);
         $::config->setList("publicationLocation", $::publoc);
+        $::config->setList("softwareLocation", $::swloc);
         # -- set verbosity levels
         foreach my $key ( (keys %::verbose) ) {
             print "Setting verbose on class $key\n";
@@ -445,6 +451,24 @@ sub run
     }
 }
 
+sub help_packages
+{
+    my $self=shift;
+    print "Synopsis:\n\t";
+    print "packages\n";
+    print "Decription:\n\t";
+    print "Display a list of know packages\n";
+}
+
+sub packages 
+{
+    my $self=shift;
+    my $pm=$self->{api}->getSoftwareManager();
+    foreach my $pkg ( $pm->listPackages() ) {
+        print $pkg,"\n";
+    }
+}
+
 sub help_platform
 {
     my $self=shift;
@@ -475,6 +499,14 @@ sub platform
     }
     print "platform : ", $plat->platform(),"\n";
     print "arch     : ", $plat->arch(),"\n";
+    print "---------\n";
+    print "variables\n";
+    print "---------\n";
+    my $vars=$plat->locations();
+    foreach my $var ( keys %{$vars} ) {
+        print $var, "=", $vars->{$var}, "\n";
+    }
+
     return;
 }
 

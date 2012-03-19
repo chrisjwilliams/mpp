@@ -137,7 +137,7 @@ sub getSoftwareManager {
     if ( ! defined $self->{soft} ) {
         $self->{soft}=SoftwareManagerCollection->new($self->{config});
         foreach my $dir ( $self->{config}->list("softwareLocation") ) {
-            $self->{soft}->addManager(SoftwareManager->new($self->{softwareloc}, $self ));
+            $self->{soft}->addManager(SoftwareManager->new($dir, $self ));
         }
     }
     return $self->{soft};
