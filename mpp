@@ -662,37 +662,6 @@ sub unpublish
     return $self->report($pub->unpublish($release, $proj, @plats));
 }
 
-sub unpublish_old
-{
-    my $self=shift;
-    my @platforms=();
-    if( ! defined $_[0] ) { $self->help_unpublish(); return 1; }
-    while ( $_[0]=~/^-(.*)/ ) {
-        my $arg=$1;
-        shift @_;
-        if( $arg eq "platform" || $arg eq "p" ) {
-            my $platform=shift @_;
-            die "platform not specified", if( ! defined $platform );
-            die "platform not valid '$platform'", if( $platform=~/^-/ );
-            push @platforms, $platform;
-        }
-        else {
-            print "unknown option : $arg\n";
-            $self->help_unpublish();
-        }
-    }
-    my $release=shift;
-    my $proj = $self->_getProject(@_);
-    if( $proj )
-    {
-        if( $#platforms >= 0 ) {
-            $proj->setPlatforms( @platforms );
-        }
-        return $proj->unpublish($release);
-    }
-    return 1;
-}
-
 sub help_publish
 {
     my $self=shift;
@@ -734,36 +703,6 @@ sub publish
     my @plats=$self->{api}->getPlatforms(@platforms);
     return $self->report($pub->publish($release, $proj, @plats));
 }
-
-#sub publish
-#{
-#    my $self=shift;
-#    my @platforms=();
-#    if( ! defined $_[0] ) { $self->help_publish(); return 1; }
-#    while ( $_[0]=~/^-(.*)/ ) {
-#        my $arg=$1;
-#        shift @_;
-#        if( $arg eq "platform" || $arg eq "p" ) {
-#            my $platform=shift @_;
-#            die "platform not specified", if( ! defined $platform );
-#            die "platform not valid '$platform'", if( $platform=~/^-/ );
-#            push @platforms, $platform;
-#        }
-#        else {
-#            print "unknown option : $arg\n";
-#            $self->help_publish();
-#        }
-#    }
-#    my $release=shift;
-#    my $proj = $self->_getProject(@_);
-#    if( $#platforms >= 0 ) {
-#        $proj->setPlatforms( @platforms );
-#    }
-#    if( $proj )
-#    {
-#        return $proj->publish($release);
-#    }
-#}
 
 sub help_build
 {
