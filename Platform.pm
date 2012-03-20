@@ -461,6 +461,7 @@ sub locations {
         $self->{typeLocations}{"doc"}="/usr/share/doc", if ( !defined $self->{typeLocations}{doc} );
         $self->{typeLocations}{"man"}="/usr/share/man", if ( !defined $self->{typeLocations}{man} );
         $self->{typeLocations}{"include"}="/usr/include", if ( !defined $self->{typeLocations}{include} );
+        $self->{typeLocations}{"apps"}="/opt", if ( !defined $self->{typeLocations}{apps} );
         $self->{typeLocations}{"python_lib"}=$self->{typeLocations}{"lib"}."/python/site-packages", if ( !defined $self->{typeLocations}{python_lib} );
     }
     return $self->{typeLocations};
