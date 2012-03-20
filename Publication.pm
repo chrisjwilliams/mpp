@@ -32,6 +32,7 @@ sub new {
     $self->{api}=shift;
     $self->fatal("no name specified"), if( ! defined $config->var("publication","name"));
     #$self->{infoserver}=Server->new($config);
+    $self->{verbose}=1;
     return $self;
 }
 
@@ -163,7 +164,21 @@ sub unpublish {
 
     if( $#platforms < 0 ) { @platforms=$project->getPlatforms() };
 
+    my $msg="project \"".$project->name()."\" \"".$project->version()."\" ";
     my $report=new Report;
+    if( ! grep( /$release/ , $self->releaseLevels() ) ) {
+        $self->verbose("cannot unpublish $msg : release level $release does not exist");
+        $report->addStderr("release level \"".$release."\"  is not defined in this publication");
+        $report->setReturnValue(1);
+        return $report;
+    }
+    if( $#platforms == -1 ) {
+        my $m="cannot unpublish $msg : no platforms specified";
+        $self->verbose($m);
+        $report->addStderr($m);
+        $report->setReturnValue(1);
+        return $report;
+    }
     foreach my $platform ( @platforms ) {
         my @repos=$self->getPlatformRepositories($platform);
         my @packs=$project->getPackages($platform);
@@ -177,7 +192,7 @@ sub unpublish {
                 #    }
                 #}
                 if( $#ppacks>=0) {
-                    $self->verbose("removing @ppacks from :'".($repo->name())."'");
+                    #$self->verbose("removing @ppacks from :'".($repo->name())."'");
                     $repo->remove( $release, @ppacks );
                 }
             }
@@ -195,11 +210,24 @@ sub publish {
     if( $#platforms < 0 ) { @platforms=$project->getPlatforms() };
 
     my $report=new Report;
+    if( ! grep( /$release/ , $self->releaseLevels() ) ) {
+        $self->verbose("cannot publish project ".$project->name()." ".$project->version()." : release level $release does not exist");
+        $report->addStderr("release level \"".$release."\"  is not defined in this publication");
+        $report->setReturnValue(1);
+        return $report;
+    }
+    if( $#platforms == -1 ) {
+        my $msg="cannot publish project ".$project->name()." ".$project->version()." : no platforms specified";
+        $self->verbose($msg);
+        $report->addStderr($msg);
+        $report->setReturnValue(1);
+        return $report;
+    }
     # -- ensure all dependencies are available inside this publication
     foreach my $platform ( @platforms ) {
         my $buildstatus=$project->statusPlatform("build", $platform);
-        $self->verbose("Build status of project ".$project->name()." ".$project->version()." : ".$buildstatus);
-        if( $buildstatus ne "built") {
+        $self->verbose( $platform->name()." Build status of project ".$project->name()." ".$project->version()." : ".$buildstatus);
+        if( $buildstatus ne "completed") {
             $report->addStderr("project ".($project->name())." ".($project->version())." has not been built");
             $report->setReturnValue(1);
             return $report;

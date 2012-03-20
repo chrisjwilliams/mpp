@@ -51,8 +51,8 @@ sub new {
 
 sub tests
 {
-    return qw(test_platforms test_setPlatforms test_build test_variant test_publish test_test);
-    return qw(test_platforms test_setPlatforms test_buildfailed test_build test_variant test_publish test_test);
+    return qw(test_platforms test_setPlatforms test_build test_variant test_test);
+    return qw(test_platforms test_setPlatforms test_buildfailed test_build test_variant test_test);
 }
 
 sub test_buildfail {
@@ -108,22 +108,6 @@ sub test_test {
     # -- 
     my $project=$self->_newProjectObject();
     $project->test();
-}
-
-sub test_publish {
-    my $self=shift;
-
-    # -- publish with a release name
-    #    expect not to fail
-    {
-        my $release="testRelease_1";
-        my $project=$self->_newProjectObject();
-        $project->publish($release);
-        #my @files=$project->locate( { name=>$project->name(), release=>$project->version() });
-        #die "locate returned null", if (! defined $ploc || $ploc eq "" );
-        #die("file $ploc does not exist"), if ( ! -f $ploc );
-    }
-    # -- publish with an alternative package name
 }
 
 sub _newProjectObject {
