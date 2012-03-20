@@ -440,43 +440,6 @@ sub buildPlatformVariant {
 }
 
 
-sub publish {
-    my $self=shift;
-    my $release=shift;
-
-    # -- publish package files
-    foreach my $platform ( $self->platforms() )
-    {
-        $self->_publishPlatform($platform, $release);
-    }
-    my @ann=$self->{config}->list("announce");
-    # -- announce to the world
-    foreach my $a ( @ann ) {
-        my $config=$self->{config}->section("announcer::$a");
-        die "unknown announcer '$a'", if( ! defined $config );
-        my $aobj=ProjectAnnounce->new($self, $config );
-        $aobj->publish($release);
-    }
-}
-
-sub unpublish {
-    my $self=shift;
-    my $release=shift;
-
-    foreach my $platform ( $self->platforms() )
-    {
-        $self->_unpublishPlatform($platform, $release );
-    }
-    my @ann=$self->{config}->list("announcers");
-    require ProjectAnnounce;
-    foreach my $a ( @ann ) {
-        my $config=$self->{config}->section("announcer::$a");
-        die "unknown announcer '$a'", if( ! defined $config );
-        my $aobj=ProjectAnnounce->new($self, $config );
-        $aobj->unpublish($release);
-    }
-}
-
 sub setPlatforms {
     my $self=shift;
     if( @_ ) {
@@ -711,7 +674,7 @@ sub _testPlatform {
     $platform->uninstallPackages( $packager->projectName() );
 
     # -- clean up
-    $self->_unpublishPlatform($platform, "mpp_test" );
+    $self->{publication}->unpublish("mpp_test", $self, $platform);
     $self->_removeReps($platform, $log, @reps );
     return $rv;
 }
@@ -746,32 +709,6 @@ sub getPackages {
     # -- pre-packaged files
     push @packs, $self->{project}->prePackaged();
     return @packs;
-}
-
-sub unpublishPlatform {
-    my $self=shift;
-    my $platform=shift;
-    my $release=shift;
-    my @publishers=@_;
-
-    # -- send to the publisher
-    #$platform=_platformSubstitute($platform);
-    my @packs=$self->getPackages($platform);
-    if( $#packs >= 0 ) {
-        foreach my $publisher ( @publishers ) {
-            my @ppacks=@packs;
-            #my @ppacks;
-            #for(@packs) {
-            #    if( grep( $_->type() , $publisher->packageTypes()) ) {
-            #        push @ppacks, $_;
-            #    }
-            #}
-            if( $#ppacks>=0) {
-                $self->verbose("removing @ppacks from :'".($publisher->name())."'");
-                $publisher->remove( $release, @ppacks );
-            }
-        }
-    }
 }
 
 sub isBuilt {
@@ -870,26 +807,6 @@ sub _publishPlatform {
     #}
 }
 
-sub _unpublishPlatform {
-    my $self=shift;
-    my $platform=shift;
-    my $release=shift;
-
-    my @publishers;
-    if( ! defined $self->{publication} ) {
-        push @publishers, $self->_getPublisher($platform);
-        $self->unpublishPlatform($platform,$release,@publishers);
-    }
-    else {
-        $self->{publication}->unpublish($release, $self, $platform);
-    }
-#    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
-#    foreach my $publisher ( @publishers ) {
-#        foreach my $pack ( $packager->packageFiles() ) {
-#            $publisher->remove($platform->platform(), $release, $pack );
-#        }
-#    }
-}
 
 sub _getPublisher {
     my $self=shift;
