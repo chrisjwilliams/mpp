@@ -770,13 +770,14 @@ sub help_test
 {
     my $self=shift;
     print "Synopsis:\n\t";
-    print "test [options] project_name \n";
+    print "test [options] <publication> <release_level> <project_name> <project_version>\n";
     print "Decription:\n\t";
     print "Start testing the packaging by trying it out on the", "\n",
-          "virtual machines available\n";
-    print "Options:\n\t";
-    print "-p, -platform platform_name : only test on the specified platform\n";
-    print "-no_shutdown : do not shutdown platforms specified with -p before this option\n\t";
+          "virtual machines available, within the context of a certain\n",
+          " publication and release level\n";
+    print "Options:\n";
+    print "\t-p, -platform platform_name : only test on the specified platform\n";
+    print "\t-no_shutdown : do not shutdown platforms specified with -p before this option\n";
 }
 
 sub test
@@ -785,6 +786,7 @@ sub test
     my %opts;
     my $leave_on={};
     my @platforms=();
+    if( ! defined $_[0] ) { $self->help_test(); return 1; }
     while ( $_[0]=~/^-(.*)/ ) {
         my $arg=$1;
         shift @_;
@@ -809,13 +811,18 @@ sub test
             $self->help_test();
         }
     }
+    if( ! defined $_[0] ) { $self->help_test(); return 1; }
+    my $pf = $self->{api}->getPublicationManager();
+    my $pub=$pf->getPublication(shift @_);
+    die "must specify a publication", if( ! defined $pub );
+    my $release=shift @_;
     my $proj=$self->_getProject(@_);
     if( $#platforms >= 0 ) {
         $proj->setPlatforms( @platforms );
     }
     if( defined $proj )
     {
-        my $rv=$proj->test();
+        my $rv=$proj->test( $pub, $release );
         return $self->_shutdownAndReport($rv, $proj, "test", $leave_on);
     }
     return 1;
@@ -889,6 +896,7 @@ sub _shutdownAndReport {
 
     my @failed=$report->failedReports();
     print $#failed+1, " platforms failed:\n";
+    my $failLog={};
 
     # -- leave on platforms that have failed
     foreach my $rep ( @failed ) {
@@ -901,8 +909,11 @@ sub _shutdownAndReport {
         print "-"x80, "\n";
         print (join "\n\t", $rep->stderr() );
         print "\n";
-        print "for more info please see log file:\n";
-        print "\t", $proj->logFile($plat,$step),"\n";
+        if( defined $rep->{logFile} ) {
+            print "for more info please see log file:\n";
+            print "\t", $rep->{logFile},"\n";
+            $failLog->{$plat}=$rep->{logFile};
+        }
         print "="x80, "\n";
     }
     # -- shutdown everything else
@@ -918,7 +929,7 @@ sub _shutdownAndReport {
     print $#failed+1, " platforms failed:\n";
     foreach my $rep ( @failed ) {
         my $plat = $rep->platform();
-        print "\t",$plat->name(),"\n";
+        print "\t",$plat->name(),(defined $failLog->{$plat})?": ".$failLog->{$plat}:"","\n";
     }
     return $#failed+1;
 }

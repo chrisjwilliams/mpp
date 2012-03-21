@@ -7,6 +7,7 @@
 # Methods:
 # new() :
 # createInstallPackages() : creates a collection of install packages for each repository
+# setupRepositories       : setup repositories on a particular platform
 #-----------------------------------
 
 package Publication;
@@ -32,7 +33,6 @@ sub new {
     $self->{api}=shift;
     $self->fatal("no name specified"), if( ! defined $config->var("publication","name"));
     #$self->{infoserver}=Server->new($config);
-    $self->{verbose}=1;
     return $self;
 }
 
@@ -77,7 +77,7 @@ sub platformSubstitution {
 
 sub releaseLevels {
     my $self=shift;
-    return $self->{config}->list("levels");
+    return ($self->{config}->list("levels"), "mpp_test");
 }
 
 #sub publicReleaseLevels {
@@ -112,6 +112,33 @@ sub getPlatformRepositories {
         }
     }
     return @repos;
+}
+
+sub removeReleaseRepositories {
+    my $self=shift;
+    my $log=shift;
+    my $release=shift; # release level
+    my $platform=shift;
+
+    my @repos=$self->getPlatformRepositories($platform);
+    $self->removeRepositories( $log, $platform, $release, @repos );
+}
+
+#
+# remove the repositories passed as a list
+sub removeRepositories {
+    my $self=shift;
+    my $log=shift;
+    my $platform=shift;
+    my $release=shift;
+        
+    for( @_ ) {
+        my $msg="removing repository ".$_->name()." release: $release platform: ".$platform->name();
+        $self->verbose($msg);
+        print $log $msg."\n",if(defined $log);
+        $platform->removePackageRepository($log,$_,$release);
+    }
+    return @_;
 }
 
 sub setupRepositories {

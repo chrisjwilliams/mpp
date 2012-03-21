@@ -67,7 +67,6 @@ sub new {
 
     # setup the execution steps
     $self->{managers}{build} = new BuildStep("build", $self->{context},$self->{work}, $self, $self->{api} );
-    $self->{managers}{test} = new TestStep("test", $self->{context},$self->{work} , $self);
     #$self->{managers}{test}->depends($self->{managers}{build});
 
 
@@ -97,14 +96,6 @@ sub id {
 sub location {
     my $self=shift;
     return $self->{loc};
-}
-
-sub logFile {
-    my $self=shift;
-    my $platform=shift;
-    my $type=shift;
-
-    return $self->{managers}{$type}->logFile($platform);
 }
 
 sub verbose {
@@ -145,42 +136,11 @@ sub buildFailed {
     return $rv;
 }
 
-sub platformsFailed {
-    my $self=shift;
-    return (keys %{$self->{errors}});
-}
-
-sub errors {
-    my $self=shift;
-    my @rv;
-    foreach my $platform ( keys %{$self->{errors}} ) {
-        push @rv, $platform.": ".$self->{errors}{$platform};
-    }
-    return @rv;
-}
-
 sub packageName {
     my $self=shift;
     my $platform=shift;
     my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
     return $packager->projectName();
-}
-
-sub _errors {
-    my $self=shift;
-    my $platform = shift;
-    my $type = shift;
-    my $txt=shift;
-    $self->{errors}{$platform->name()}=$txt;
-}
-
-sub testFailed {
-    my $self=shift;
-    my $rv=0;
-    foreach my $platform ( keys %{$self->{tested}} ) {
-        ++$rv, if( $self->{tested}{$platform} ne 0);
-    }
-    return $rv;
 }
 
 sub setBuildProcedure {
@@ -226,13 +186,16 @@ sub statusString {
 
 sub test {
     my $self=shift;
+    my $publication=shift;
+    my $release = shift;
     my @platforms=@_;
 
     if( $#platforms <= 0 )
     {
         @platforms=$self->platforms("test");
     }
-    return $self->{managers}{test}->execute( @platforms );
+    my $testManager = new TestStep("test", $self->{context},$self->{work} , $self, $release, $publication);
+    return $testManager->execute( @platforms );
 }
 
 sub _buildPlatform {
@@ -535,26 +498,32 @@ sub packageFile {
     return $self->{config}->var("platform::".$platform->name(),"packageFileName");
 }
 
+#
+# Install the published project from the specified release/publication
+#
 sub install {
     my $self=shift;
     my $platform=shift;
+    my $release=shift;
+    my $publication=shift;
     my $log=shift;
     if( ! defined $log ) {
         $log=FileHandle->new(">&main::STDOUT");
     }
-
+    # -- add publication to platfrom for package dependencies
+    my @reps=();
+    if( defined $release && defined $publication ) {
+        @reps=$publication->setupRepositories( $log, $release, $platform );
+    }
+    # -- publish self to the test repo
     my $name=$self->packageName($platform);
-    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
-    my @reps=$self->_platformRepositories($log,$platform);
-    #my $rep=$packager->buildInfo("useRepository");
-    #$self->_installReps($platform, $rep, $log);
     $platform->updatePackageInfo($log);;
     $platform->installPackages($log, $name);
-    if( $self->_removeReps($platform, $log, @reps) ) {
-        $platform->updatePackageInfo($log);;
+    if( $#reps >= 0 ) {
+        $publication->removeRepositories($log, $platform, @reps);
+        $platform->updatePackageInfo($log);
     }
 }
-
 
 # -- private methods -------------------------
 sub _platformRepositories {
@@ -639,25 +608,6 @@ sub _testPlatform {
     my $testdir=$self->{workspace}."/mpp_test";
     my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
 
-    # -- copy file to test publish area
-    $self->_publishPlatform($platform, "mpp_test" );
-
-    # install any required repositories
-    my @reps=$self->_platformRepositories($log,$platform);
-    #my $rep=$packager->buildInfo("useRepository");
-    #$self->_installReps($platform, $rep, $log);
-
-    # -- add test repository to platforms package manager
-    foreach my $publisher ( $self->_getPublisher($platform) )
-    {
-        $platform->addPackageRepository($publisher, "mpp_test" );
-    }
-    $platform->updatePackageInfo($log);;
-
-    # -- invoke the install
-    $platform->updatePackageInfo($log);
-    $self->{tested}{$platform}=$platform->installPackages( $log, $packager->projectName());
-
     # ---- setup the testing environment
     my $binfo=BuildInfoMPP->new($self->{project},$platform,$self->{workspace});
     $self->_copyFiles($log, $platform, $binfo->sectionInfo("test","copy") );
@@ -670,12 +620,6 @@ sub _testPlatform {
         $rv=$platform->work($testdir, $log, "run", $cmd);
     }
 
-    # ---- remove the package
-    $platform->uninstallPackages( $packager->projectName() );
-
-    # -- clean up
-    $self->{publication}->unpublish("mpp_test", $self, $platform);
-    $self->_removeReps($platform, $log, @reps );
     return $rv;
 }
 
@@ -734,79 +678,6 @@ sub _platformSubstitute {
     }
     return $platform;
 }
-
-sub publishPlatform {
-    my $self=shift;
-    my $platform=shift;
-    my $release=shift;
-    my @publishers=@_;
-
-    # -- send to the publisher
-    my $report=new Report;
-    # -- determine any platform substitutes
-    #$platform=_platformSubstitute($platform);
-    my @packs=$self->getPackages($platform);
-    if( $#packs >= 0 ) {
-        foreach my $publisher ( @publishers ) {
-            my @ppacks=@packs;
-            #for(@packs) {
-            #    my $type=$_->type();
-            #    $self->verbose("checking if publisher ".$publisher->name()." supports packages of type $type\n");
-            #    if( grep( /$type/i , $publisher->packageTypes()) ) {
-            #            push @ppacks, $_;
-            #    }
-            #    else {
-            #        $self->verbose("package type $type unsupported");
-            #    }
-            #}
-            if( $#ppacks>=0) {
-                if($self->{verbose}) {
-                    my $str="";
-                    for(@ppacks) {
-                        $str.=$_->name();
-                    }
-                    $self->verbose("publishing $str to :'".($publisher->name())."'");
-                }
-                $publisher->add( $release, @ppacks );
-            }
-        }
-    }
-    else {
-        warn("no packages defined");
-        $report->addStderr("no packages defined");
-        $report->setReturnValue(1);
-    }
-    return $report;
-}
-
-sub _publishPlatform {
-    my $self=shift;
-    my $platform=shift;
-    my $release=shift;
-
-    $self->verbose("publishing for platform :'".($platform->name())."'");
-    my @publishers=$self->_getPublisher($platform);
-    die("no publishers found for ".($platform->hostname())), if ( $#publishers < 0 );
-    $self->publishPlatform($platform, $release, @publishers);
-    #my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
-    #my $pack=$self->{work}."/".$platform->name()."/";
-    #my @packs=();
-    #for ( $packager->packageFiles() ) {
-    #    if( -f $pack.$_ ) {
-    #        push @packs, $pack.$_;
-    #    }
-    #    else {
-    #        print "No package '$_' available for platform : ", $platform->name(),"\n";
-    #    }
-    #}
-    #if( $#packs >= 0 ) {
-    #    foreach my $publisher ( @publishers ) {
-    #        $self->verbose("publishing @packs to :'".($publisher->name())."'");
-    #        $publisher->add($platform->platform(), $release, @packs );
-    #    }
-    #}
-}
-
 
 sub _getPublisher {
     my $self=shift;

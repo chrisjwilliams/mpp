@@ -97,3 +97,20 @@ sub setReturnValue {
     my $self=shift;
     $self->{rv}=shift;
 }
+
+sub summary {
+    my $self=shift;
+    my $fh = shift;
+    my $prefix=shift||"";
+    my $plat=$self->platform();
+    my $nm=(defined $plat)?$plat->name():"";
+    print $fh (join "\n$prefix"."$nm: ", $self->stdout() );
+    if( $self->failed() ) {
+        print $fh $prefix, "- stderr ","-"x71, "\n$prefix$nm";
+        print $fh (join "\n$prefix\t$nm", $self->stderr() );
+        print $fh $prefix,"- end stderr","-"x67, "\n";
+    }
+    foreach my $rep ( $self->subReports() ) {
+        $rep->summary($fh, $prefix."\t");
+    }
+}

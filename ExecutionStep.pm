@@ -102,6 +102,7 @@ sub executePlatform {
         $rv->setReturnValue( 1 );
         return $rv;
     }
+    $rv->{logFile}=$logfile;
 
     # -- check dependencies have been run
     foreach my $dep ( @{$self->{deps}} ) {
@@ -179,11 +180,6 @@ sub logFile {
     my $self=shift;
     my $platform=shift;
     return $self->{context}->filename($platform->name(), "log_".$self->{name});
-#    my $dir = $self->{logBase}."/".($platform->name());
-#    if( ! -d $dir ) {
-#        mkdir $dir;
-#    }
-#    return $dir."/log_".$self->{name};
 }
 
 sub errors {
