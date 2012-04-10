@@ -4,7 +4,7 @@ These variables exist in the top level namespace
 
 Variable Name                     | Description
 ------------------------------------------------------------------------------------------------------
-${project}                        | The name of the project
+${name}                           | The name of the project
 ${version}                        | The project version
 ${prefix}                         | The temporary location on the build platform for a build to install files
 ${srcdir}                         | The top directory name of the unpacked src code
