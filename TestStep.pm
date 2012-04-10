@@ -28,14 +28,6 @@ sub new {
     return $self;
 }
 
-sub executeStepOld {
-    my $self = shift;
-    my $platform = shift;
-    my $log =shift;
-
-    return $self->{project}->_testPlatform($platform, $log );
-}
-
 sub executeStep {
     my $self = shift;
     my $platform = shift;
