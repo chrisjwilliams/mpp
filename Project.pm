@@ -208,7 +208,6 @@ sub _buildPlatform {
     my $rv=0;
 
     croak "no platform defined", if ( ! defined $platform );
-    print "Project ", $self->name($platform), " Building on platform :".$platform->name(),(defined $platform->ip())?" ( ".($platform->ip())." )":"" ,"\n";
     my $localwork=$self->_localwork($platform);
     my $packager=$self->_getPackager($workspace, $platform, $self->{project});
 
