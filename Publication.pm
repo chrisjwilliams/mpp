@@ -136,7 +136,7 @@ sub removeRepositories {
         my $msg="removing repository ".$_->name()." release: $release platform: ".$platform->name();
         $self->verbose($msg);
         print $log $msg."\n",if(defined $log);
-        $platform->removePackageRepository($log,$_,$release);
+        $platform->removePackageRepository($log,$release, $_);
     }
     return @_;
 }
@@ -261,16 +261,16 @@ sub publish {
         }
         $self->verbose("publishing ".($project->name())." on platform ".($platform->name()) );
         foreach my $package ( $project->dependencies() ) {
-            $self->verbose("checking dependency ".($project->name())." on ".($platform->name()), $package );
-            if( ! $self->isPublished($package, $platform, $release) ) {
-                my $depProject=$package->getProject($package);
-                if( $depProject ) {
-                    $report->addReport($self->publish($release, $depProject, $release));
-                }
-            }
-            else { 
-                $self->verbose("dependency is already published ".($package)." on ".($platform->name()), $package );
-            }
+            #$self->verbose("checking dependency ".($project->name())." on ".($platform->name()), $package );
+            #if( ! $self->isPublished($package, $platform, $release) ) {
+            #    my $depProject=$package->getProject($package);
+            #    if( $depProject ) {
+            #        $report->addReport($self->publish($release, $depProject, $release));
+            #    }
+            #}
+            #else { 
+            #    $self->verbose("dependency is already published ".($package)." on ".($platform->name()), $package );
+            #}
         }
         # -- now publish the packages
         my @repos=$self->getPlatformRepositories($platform);
@@ -320,7 +320,7 @@ sub isPublished {
     my $release=shift;
 
     # -- check availability on host platform
-    return 1, if( $platform->hasPackage( $package ) );
+    #return 1, if( $platform->hasPackage( $package ) );
 
     # -- check if we have an mpp build available
     my $repo;

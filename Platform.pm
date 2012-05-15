@@ -487,11 +487,14 @@ sub addPackageRepository {
 
 sub removePackageRepository {
     my $self=shift;
+    my $log=shift;
+    my $release=shift;
     my $type=$self->packageManagerType();
     my $manager=$self->_getPackageManager($type);
 
-    foreach my $release ( @_ ) {
-        $manager->removeRepository( $release->repository(), $release->level() );
+    foreach my $_ ( @_ ) {
+        #$manager->removeRepository( $release->repository(), $release->level() );
+        $manager->removeRepository( $_, $release );
     }
 }
 

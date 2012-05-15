@@ -214,7 +214,7 @@ sub _getRepositoryConfig {
         my $key="repository::$name";
         my $section=$self->{config}->section($key);
         if( ! defined $section || $section eq "" ) {
-            die "cannot find configuration for repository '$name'";
+            carp "cannot find configuration for repository '$name'";
         }
         $self->{repoConfig}{$name} = $self->{config}->breakout($key, "\:\:$name");
         # -- set the name if its not already defined
