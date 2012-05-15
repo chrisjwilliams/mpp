@@ -129,7 +129,7 @@ sub build {
     # -- install commands
     #$self->runCommands($log, $self->{builder}->installCommands());
 
-    # -- launch rpmbuild
+    # -- launch rpmbuild for each variant
     my $project=$self->{project};
     my $rpm=$self->{rpmDir};
     foreach my $sub ( $project, $project->subpackages() ) {
@@ -289,10 +289,6 @@ sub _specFileSub {
         }
         print $fh "\n";
     }
-#    if( $#seperateSharedDir >= 0  ) {
-#        print $fh '%post -p /sbin/ldconfig',"\n";
-#        print $fh '%postun -p /sbin/ldconfig',"\n";
-#    }
     print $fh "%files\n";
     print $fh "%defattr(-,root,root)\n";
     print $fh '%attr(-, root, root ) /',"\n";
