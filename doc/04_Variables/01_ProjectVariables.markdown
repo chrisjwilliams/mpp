@@ -6,6 +6,10 @@ Variable Name                     | Description
 ------------------------------------------------------------------------------------------------------
 ${name}                           | The name of the project
 ${version}                        | The project version
+${projectdir                      | The name of the top project directory
+                                  | (n.b. name=projectdir by default)
+${versiondir}                     | The name of the directory in which the project files are stored
+                                  | (n.b. version=versiondir by default)
 ${prefix}                         | The temporary location on the build platform for a build to install files
 ${srcdir}                         | The top directory name of the unpacked src code
 ${testdir}                        | The working directory where test data etc is uploaded to

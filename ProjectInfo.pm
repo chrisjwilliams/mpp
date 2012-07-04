@@ -25,26 +25,32 @@ sub new {
     my $self=$class->SUPER::new(@_);
     $self->{config}=shift;
     $self->{projectDir}=shift;
-    $self->{name}=shift;
-    $self->{version}=shift;
+    my $dirname=shift;
+    my $subdir=shift;
     $self->{parent}=shift;
 
+    
     $self->{type}=$self->{config}->var("project","type") || "build";
     die("unknown build type '".$self->{type}."'"), if ( ! ($self->{type}=~/pack/i || $self->{type}=~/build/i ) );
     $self->{toBuild}=1; # assume buildable
     # --- check minimal information and set defaults
-    if( ! defined $self->{config}->var("project","name") ) {
-        $self->{config}->setVar("project","name",$self->{name});
-    }
-    else {
-        $self->{name}=$self->{config}->var("project","name");
-    }
     if( ! defined $self->{config}->var("project","version") ) {
+        $self->{version}=$subdir;
         $self->{config}->setVar("project","version",$self->{version});
     }
     else {
         $self->{version}=$self->{config}->var("project","version");
     }
+    if( ! defined $self->{config}->var("project","name") ) {
+        $self->{name}=$dirname;
+    }
+    else {
+        # -- a restricted expansion set for the project name
+        my $nenv=Environment->new( { version=>"$self->{version}",
+                                 projectdir=>"$dirname", versiondir=>"$subdir" } );
+        $self->{name}=$nenv->expandString($self->{config}->var("project","name"));
+    }
+    $self->{config}->setVar("project","name",$self->{name}); # set to the expanded version
     # --- licence
     my $licence=$self->{config}->var("project","licence");
     if( ! defined $licence ) {
@@ -55,7 +61,9 @@ sub new {
 
     # -- set up expansion variables
     $self->{env}=Environment->new( { name=>"$self->{name}",
-                                     version=>"$self->{version}" } );
+                                     version=>"$self->{version}",
+                                     projectdir=>"$dirname",
+                                     versiondir=>"$subdir" } );
 
     bless $self, $class;
     return $self;
@@ -168,11 +176,18 @@ sub name {
                  );
         foreach my $key ( reverse @keys ) {
             my $nm = $self->{config}->var($key,"name");
-                return $nm, if( defined $nm && $nm ne "" );
+            if( defined $nm && $nm ne "" ) {
+                return $platform->expandString($nm);
             }
+        }
     }
     else {
-        return $self->{name};
+        # make a Generic platform environment for name
+        # expansion
+        my $env = new Environment( { platform=>"generic",
+                                     arch=>"all" } );
+        $env->namespace("platform");
+        return $env->expandString($self->{name});
     }
 }
 

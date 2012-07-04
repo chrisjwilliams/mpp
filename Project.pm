@@ -58,7 +58,7 @@ sub new {
     {
         mkdir $self->{work};
     }
-    $self->{workspace} = $self->{project}->name()."_".$self->{project}->version(); # remote workspace
+    #$self->{workspace} = $self->{project}->name()."_".$self->{project}->version(); # remote workspace
     bless $self, $class;
 
     # setup the context object
@@ -71,6 +71,15 @@ sub new {
 
 
     return $self;
+}
+
+sub workspace {
+    my $self=shift;
+    my $platform=shift;
+    if( ! defined $self->{workspace} ) {
+        $self->{workspace} = $self->{project}->name($platform)."_".$self->{project}->version(); # remote workspace
+    }
+    return $self->{workspace};
 }
 
 sub executionSteps {
@@ -139,7 +148,7 @@ sub buildFailed {
 sub packageName {
     my $self=shift;
     my $platform=shift;
-    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+    my $packager=$self->_getPackager($self->workspace($platform), $platform, $self->{project});
     return $packager->projectName();
 }
 
@@ -204,7 +213,7 @@ sub _buildPlatform {
     my $log = shift;
     my @repositories=@_;
 
-    my $workspace=$self->{workspace};
+    my $workspace=$self->workspace($platform);
     my $rv=0;
 
     croak "no platform defined", if ( ! defined $platform );
@@ -265,7 +274,7 @@ sub _buildPlatform {
     my $srcDir=$self->{project}->srcDir();
     {
         # within these braces, workspace includes the srcDir
-        my $workspace=$self->{workspace}."/$srcDir", if( defined $srcDir && $srcDir ne "" );
+        my $workspace=$self->workspace($platform)."/$srcDir", if( defined $srcDir && $srcDir ne "" );
         if( defined $copy )
         {
             $self->verbose("copying files\n");
@@ -532,7 +541,7 @@ sub _platformRepositories {
     my $version=shift||"pre-release"; # nasty hack
 
     my @reps;
-    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+    my $packager=$self->_getPackager($self->workspace($platform), $platform, $self->{project});
     my $rep=$packager->buildInfo("useRepository");
     if( defined $rep ) {
         push @reps,$self->_installReps($platform, $rep, $log);
@@ -604,11 +613,12 @@ sub _testPlatform {
     my $rv=new Report;
     my $localwork=$self->_localwork($platform);
 
-    my $testdir=$self->{workspace}."/mpp_test";
-    my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+    my $workspace=$self->workspace($platform);
+    my $testdir=$workspace."/mpp_test";
+    my $packager=$self->_getPackager($workspace, $platform, $self->{project});
 
     # ---- setup the testing environment
-    my $binfo=BuildInfoMPP->new($self->{project},$platform,$self->{workspace});
+    my $binfo=BuildInfoMPP->new($self->{project},$platform,$workspace);
     $self->_copyFiles($log, $platform, $binfo->sectionInfo("test","copy") );
     $self->_copyExpandFiles($log, $platform, $binfo->sectionInfo("test","copyExpand"), $packager );
     $self->_unpack($log, $platform, $binfo->sectionInfo("test","unpack") );
@@ -629,7 +639,7 @@ sub getPackages {
     my @packs=();
     # -- get built packages
     if( $self->{project}->type() eq "build" ) {
-        my $packager=$self->_getPackager($self->{workspace}, $platform, $self->{project});
+        my $packager=$self->_getPackager($self->workspace( $platform ), $platform, $self->{project});
         my $pack=$self->{work}."/".$platform->name()."/";
         my @files=();
         for ( $packager->packageFiles() ) {
@@ -754,7 +764,7 @@ sub _copyFiles {
     my $platform=shift;
     my $copy=shift;
 
-    my $workspace=$self->{workspace};
+    my $workspace=$self->workspace( $platform );
     if( defined $copy )
     {
         $self->verbose("copying files\n");
@@ -787,7 +797,7 @@ sub _copyExpandFiles {
     my $platform=shift;
     my $copyex=shift;
     my $packager=shift;
-    my $workspace=shift||$self->{workspace};
+    my $workspace=shift||$self->workspace( $platform );
     if( defined $copyex )
     {
         $self->verbose("copying expanded files (workspace=$workspace)\n");
@@ -826,10 +836,10 @@ sub _unpack {
         {
             $file=$self->{loc}."/".$file;
         }
-        $platform->upload( $self->{workspace}, $file );
+        $platform->upload( $self->workspace( $platform ), $file );
         if( -f $file ) {
             $self->verbose($platform->hostname()."> unpacking $file....");
-            $platform->work( $self->{workspace}, "unpack", basename($file) );
+            $platform->work( $self->workspace( $platform ), "unpack", basename($file) );
         }
     }
 }
