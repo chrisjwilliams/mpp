@@ -375,14 +375,20 @@ sub help_install
 {
     my $self=shift;
     print "Synopsis:\n\t";
-    print "install project version platform[,platform,...]\n";
+    print "install publication_release publication_name project_name project_version platform[,platform,...]\n";
     print "Decription:\n\t";
-    print "install the specified project on the platform\n";
+    print "install the specified project on the platform\n\t";
+    print "from the specified repository\n";
 }
 
 sub install
 {
     my $self=shift;
+    my $release=shift;
+    my $pf = $self->{api}->getPublicationManager();
+    my $pub=$pf->getPublication(shift @_);
+    die "must specify a publication", if( ! defined $pub );
+
     my $project = $self->_getProject(@_);
     shift; shift;
 
@@ -396,7 +402,7 @@ sub install
         push @plats, $plat;
     }
     foreach my $platform ( @plats ) {
-        $project->install( $platform );
+        $project->install( $platform, $release, $pub );
     }
 }
 
