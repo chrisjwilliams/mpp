@@ -392,7 +392,6 @@ sub install
     my $project = $self->_getProject(@_);
     shift; shift;
 
-    my @plats=();
     my @plats=$self->{api}->getPlatforms(@_);
     foreach my $platform ( @plats ) {
         $project->install( $platform, $release, $pub );
