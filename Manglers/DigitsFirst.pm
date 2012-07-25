@@ -24,8 +24,8 @@ sub new {
 sub _mangleString {
     my $self=shift;
     my $string=shift;
-    $string=~s/^(\D+)(.*)/0.$2$1/; # if starts with anything else,.
+    $string=~s/^(\D+)\.(.*)/0.$2\.$1/; # replace any non digit before a . with 0
+    $string=~s/^(\D+)(.*)/$2$1/; # if starts with anything else,.
                                    # then move word to end of the string
-                                   # and insert a 0. before it
     return $string;
 }
