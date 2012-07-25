@@ -29,9 +29,11 @@ sub tests {
 sub test_method {
     my $self=shift;
     my $mangler=new Manglers::DigitsFirst;
-    $self->_testString($mangler,"v1.0", "1.0v");
-    $self->_testString($mangler,"svn1.0", "1.0svn");
+    $self->_testString($mangler,"v1.0", "1.0.v");
+    $self->_testString($mangler,"svn1.0", "1.0.svn");
+    $self->_testString($mangler,"svn1100", "0.1100.svn");
     $self->_testString($mangler,"svn.1.0", "0.1.0.svn");
+    $self->_testString($mangler,"v1.0-g639832", "1.0-g639832.v");
 }
 
 sub _testString {
