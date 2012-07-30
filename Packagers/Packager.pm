@@ -63,12 +63,18 @@ sub projectName {
 
 sub projectVersion {
     my $self=shift;
+    my $version=$self->unmangledProjectVersion();
+    if( defined $self->{vmangler} ) {
+        $version=$self->{vmangler}->mangle($version);
+    }
+    return $version;
+}
+
+sub unmangledProjectVersion {
+    my $self=shift;
     my $version=$self->buildInfo("packageVersion");
     if( ! defined $version ) {
         $version=$self->{project}->version($self->{platform});
-    }
-    if( defined $self->{vmangler} ) {
-        $version=$self->{vmangler}->mangle($version);
     }
     return $version;
 }

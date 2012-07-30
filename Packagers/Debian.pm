@@ -62,17 +62,6 @@ sub projectName {
     return $projname;
 }
 
-#sub projectVersion {
-#    my $self=shift;
-    # _ is not allowed
-#    (my $version=$self->SUPER::projectVersion())=~s/_/-/g;
-    # -- must start with a digit 
-    #$version=~s/^(\D+)(.*)/0.$2$1/; # if starts with anything else, 
-                                   # then move word to end of the version string
-                                   # and insert a 0. before it
-#    return $version;
-#}
-
 sub setup {
     my $self=shift;
     my $downloadDir=shift;
@@ -286,6 +275,6 @@ sub _control {
 sub _packageFile {
     my $self=shift;
     my $proj=shift;
-    my $packageName=($proj->name($self->{platform}))."-".($self->projectVersion()).".deb";
+    my $packageName=($proj->name($self->{platform}))."-".($self->unmangledProjectVersion()).".deb";
     return $packageName;
 }
